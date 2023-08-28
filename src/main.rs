@@ -61,10 +61,10 @@ impl TryFrom<u8> for DataType {
 fn main() -> Result<(), std::io::Error> {
     let mut stdout = std::io::stdout();
 
-    let serialized = include_bytes!("../../testfiles/krds/pdfannot.yjr");
+    let serialized = include_bytes!("../../testfiles/krds/bookhl+note.azw3r");//pdfannot.yjr");
 
 
-    let deserialized: file_formats::YJRFile = de::from_slice(serialized).unwrap();
+    let deserialized: file_formats::ReaderDataFile = de::from_slice(serialized).unwrap();
 
     stdout.write_fmt(format_args!("{:#?}", &deserialized))?;
 

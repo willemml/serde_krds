@@ -7,17 +7,60 @@ fn note_magic() -> String {
     std::str::from_utf8(NOTE_MAGIC).unwrap().to_string()
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct YJRFile {
-    #[serde(rename = "next.in.series.info.data")]
-    nis_info_data: String,
-    #[serde(rename = "annotation.cache.object")]
-    annotation_cache: HashMap<NoteType, Vec<Note>>,
-    #[serde(rename = "language.store")]
-    language_store: LanguageStore,
-    #[serde(rename = "ReaderMetrics")]
-    reader_metrics: HashMap<String, String>,
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct ReaderDataFile {
+    #[serde(rename = "font.prefs", skip_serializing_if = "Option::is_none")]
+    font_preferences: Option<FontPreferences>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sync_lpr: Option<bool>,
+    #[serde(
+        rename = "next.in.series.info.data",
+        skip_serializing_if = "Option::is_none"
+    )]
+    nis_info_data: Option<String>,
+    #[serde(
+        rename = "annotation.cache.object",
+        skip_serializing_if = "Option::is_none"
+    )]
+    annotation_cache: Option<HashMap<NoteType, IntervalTree<Note>>>,
+    #[serde(rename = "apnx.key", skip_serializing_if = "Option::is_none")]
+    apnx_key: Option<APNXKey>,
+    #[serde(rename = "language.store", skip_serializing_if = "Option::is_none")]
+    language_store: Option<LanguageStore>,
+    #[serde(rename = "ReaderMetrics", skip_serializing_if = "Option::is_none")]
+    reader_metrics: Option<HashMap<String, String>>,
 }
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct FontPreferences(
+    pub String, // font
+    pub i32,
+    pub i32, // font size
+    pub i32,
+    pub i32,
+    pub i32,
+    pub i32,
+    pub i32,
+    pub i32,
+    pub i32, // bold level
+    pub String,
+    pub i32,
+    pub String,
+    pub bool,
+    pub String,
+    pub i32,
+);
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct APNXKey(
+    pub String,
+    pub String, // type
+    pub bool,
+    pub Vec<i32>,
+    pub i32,
+    pub i32,
+    pub String,
+);
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct AnnotationData(
@@ -26,7 +69,16 @@ pub struct AnnotationData(
     pub i64,    // created time
     pub i64,    // last modified
     pub String, // template
-    pub String, // note nbk ref
+    pub String, // note nbk ref for handwritten, or note text for typed
+);
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct HighlightData(
+    pub String, // Start pos
+    pub String, // End pos
+    pub i64,    // created time
+    pub i64,    // last modified
+    pub String, // template
 );
 
 #[repr(i32)]
@@ -57,7 +109,8 @@ impl TryFrom<i32> for NoteType {
 impl Serialize for NoteType {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer {
+        S: serde::Serializer,
+    {
         serializer.serialize_i32(*self as i32)
     }
 }
@@ -77,24 +130,31 @@ impl<'de> Visitor<'de> for NoteTypeVisitor {
     where
         E: de::Error,
     {
-        value.try_into().map_err(|_| E::custom(format!("i32 out of range: -2..9")))
+        value
+            .try_into()
+            .map_err(|_| E::custom(format!("i32 out of range: -2..9")))
     }
 }
 
 impl<'de> Deserialize<'de> for NoteType {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de> {
+        D: serde::Deserializer<'de>,
+    {
         deserializer.deserialize_i32(NoteTypeVisitor)
     }
 }
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+#[serde(rename = "saved.avl.interval.tree")]
+pub struct IntervalTree<T>(Vec<T>);
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum Note {
     #[serde(rename = "annotation.personal.bookmark")]
     Bookmark(AnnotationData),
     #[serde(rename = "annotation.personal.highlight")]
-    Highlight(AnnotationData),
+    Highlight(HighlightData),
     #[serde(rename = "annotation.personal.note")]
     Typed(AnnotationData),
     #[serde(rename = "annotation.personal.handwritten_note")]
@@ -116,7 +176,7 @@ pub mod example_files {
     use super::*;
 
     /// Contains location info for scribbles on a write-on PDF.
-    pub fn yjr_file_1() -> YJRFile {
+    pub fn reader_data_file_1() -> ReaderDataFile {
         let mut annotations = HashMap::new();
         let handwritten = vec![
             Note::Handwritten(AnnotationData(
@@ -160,17 +220,18 @@ pub mod example_files {
                 "c0mArJzWjReSnNaskkkQWkw0".to_string(),
             )),
         ];
-        annotations.insert(NoteType::Handwritten, handwritten);
+        annotations.insert(NoteType::Handwritten, IntervalTree(handwritten));
         let ls = LanguageStore("en-US".to_string(), 4);
         let mut rm = HashMap::new();
 
         rm.insert("booklaunchedbefore".to_string(), "true".to_string());
 
-        YJRFile {
-            nis_info_data: "".to_string(),
-            annotation_cache: annotations,
-            language_store: ls,
-            reader_metrics: rm,
+        ReaderDataFile {
+            nis_info_data: Some("".to_string()),
+            annotation_cache: Some(annotations),
+            language_store: Some(ls),
+            reader_metrics: Some(rm),
+            ..Default::default()
         }
     }
 }

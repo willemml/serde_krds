@@ -13,11 +13,12 @@ use crate::DataType;
 #[derive(Debug)]
 pub struct Deserializer<'de> {
     input: &'de [u8],
+    counter: usize,
 }
 
 impl<'de> Deserializer<'de> {
     pub fn from_slice(input: &'de [u8]) -> Self {
-        Deserializer { input }
+        Deserializer { input, counter: 0 }
     }
 }
 
@@ -45,6 +46,12 @@ where
 }
 
 impl<'de> Deserializer<'de> {
+    /// Does not check for EOF, make sure to check before calling.
+    fn consume_unchecked(&mut self, count: usize) {
+            self.input = &self.input[count..];
+            self.counter += count;        
+    }
+    
     fn peek_byte(&mut self) -> Result<u8> {
         let byte = self.input.bytes().next().ok_or(Error::Eof)??;
         Ok(byte)
@@ -52,7 +59,7 @@ impl<'de> Deserializer<'de> {
 
     fn next_byte(&mut self) -> Result<u8> {
         let byte = self.peek_byte()?;
-        self.input = &self.input[1..];
+        self.consume_unchecked(1);
         Ok(byte)
     }
 
@@ -61,7 +68,7 @@ impl<'de> Deserializer<'de> {
             return Err(Error::Eof);
         }
         let buf: [u8; N] = *&self.input[0..N].try_into().unwrap();
-        self.input = &self.input[N..];
+        self.consume_unchecked(N);
         Ok(buf)
     }
 
@@ -70,7 +77,7 @@ impl<'de> Deserializer<'de> {
             return Err(Error::Eof);
         }
         let slice = &self.input[..count];
-        self.input = &self.input[count..];
+        self.consume_unchecked(count);
         Ok(slice)
     }
 
@@ -93,8 +100,13 @@ impl<'de> Deserializer<'de> {
     }
 
     fn parse_type(&mut self, datatype: DataType) -> Result<()> {
-        if self.next_datatype()? != datatype {
-            Err(Error::Expected(datatype))
+        let next = self.next_datatype()?;
+        if next != datatype {
+            Err(Error::Expected {
+                want: datatype,
+                got: next,
+                pos: self.counter,
+            })
         } else {
             Ok(())
         }
@@ -110,7 +122,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 
     serde::forward_to_deserialize_any! {
         bool i8 i16 i32 i64 f32 f64 char string
-        option unit unit_struct
+        unit unit_struct
     }
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
@@ -185,32 +197,36 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         unimplemented!()
     }
 
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        if self.peek_next_datatype()? == DataType::FieldEnd {
+            visitor.visit_none()
+        } else {
+            visitor.visit_some(self)
+        }
+    }
+
     fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_newtype_struct(self)
+        self.parse_type(DataType::FieldBegin)?;
+        let value = visitor.visit_newtype_struct(&mut *self)?;
+        self.parse_type(DataType::FieldEnd)?;
+        Ok(value)
     }
 
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        let next = self.peek_next_datatype()?;
-        if next == DataType::FieldBegin {
-            self.next_byte()?;
-            if self.parse_string()? == "saved.avl.interval.tree" {
-                self.parse_type(DataType::Int)?;
-                let length = self.parse_i32()? as usize;
-                let value = visitor.visit_seq(LengthBased::new(self, length))?;
-                self.parse_type(DataType::FieldEnd)?;
-                Ok(value)
-            } else {
-                Err(Error::ExpectedIntervalTree)
-            }
-        } else {
-            visitor.visit_seq(Terminated::new(self))
-        }
+        self.parse_type(DataType::Int)?;
+        let length = self.parse_i32()? as usize;
+        let value = visitor.visit_seq(LengthBased::new(self, length))?;
+        self.parse_type(DataType::FieldEnd)?;
+        Ok(value)
     }
 
     fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value>
@@ -229,7 +245,11 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_seq(visitor)
+//        self.parse_type(DataType::FieldBegin)?;
+//        dbg!(self.parse_string())?;
+        let value = visitor.visit_seq(Terminated::new(self))?;
+//        self.parse_type(DataType::FieldEnd)?;
+        Ok(value)
     }
 
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>
@@ -437,7 +457,7 @@ impl<'de, 'a> VariantAccess<'de> for Enum<'a, 'de> {
     type Error = Error;
 
     fn unit_variant(self) -> Result<()> {
-        Err(Error::Expected(DataType::String))
+        Err(Error::Message("Should already be parsed".to_string()))
     }
 
     fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>

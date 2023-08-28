@@ -15,7 +15,7 @@ pub enum Error {
     BadMagic,
     BadValue,
     Unexpected(DataType),
-    Expected(DataType),
+    Expected { want: DataType, got: DataType, pos: usize },
     ExpectedIntervalTree,
     TrailingBytes,
 }

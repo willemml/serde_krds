@@ -1,3 +1,5 @@
+#![allow(dead_code, unused)]
+
 use std::{
     fs::{File, OpenOptions},
     io::{Read, Write},

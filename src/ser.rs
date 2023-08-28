@@ -45,7 +45,7 @@ impl<W: Write> WriteDataType for W {
 impl Serializer {
     fn write_str(&mut self, string: &str) -> Result<()> {
         if string.is_empty() {
-            self.output.write_u8(1)?;
+            self.output.write_all(&[0u8; 3])?;
         } else {
             self.output.write_u8(0)?;
             self.output
@@ -180,6 +180,9 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     // contains a '"' character.
     fn serialize_str(self, v: &str) -> Result<()> {
         self.write_dtype(DataType::UTF)?;
+        if !v.is_empty() {
+            //self.output.write_u8(0)?;
+        }
         self.write_str(v)
     }
 
@@ -187,7 +190,6 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     // string here. Binary formats will typically represent byte arrays more
     // compactly.
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
-        use serde::ser::SerializeSeq;
         let mut seq = self.serialize_seq(Some(v.len()))?;
         for byte in v {
             seq.serialize_element(byte)?;
@@ -197,7 +199,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 
     // An absent optional is represented as the JSON `null`.
     fn serialize_none(self) -> Result<()> {
-        self.serialize_unit()
+        Ok(())
     }
 
     // A present optional is represented as just the contained value. Note that
@@ -215,7 +217,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     // In Serde, unit means an anonymous value containing no data. Map this to
     // JSON as `null`.
     fn serialize_unit(self) -> Result<()> {
-        self.output.write_i8(-1);
+        self.output.write_i8(-1)?;
         Ok(())
     }
 
@@ -332,9 +334,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     // omit the field names when serializing structs because the corresponding
     // Deserialize implementation is required to know what the keys are without
     // looking at the serialized data.
-    fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
-        dbg!(len);
-        dbg!(name);
+    fn serialize_struct(self, _name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
         self.serialize_i32(len as i32)?;
         Ok(self)
     }
@@ -527,7 +527,7 @@ impl<'a> ser::SerializeStructVariant for &'a mut Serializer {
     }
 
     fn end(self) -> Result<()> {
-        self.write_dtype(DataType::ObjectEnd)
+        Ok(())
     }
 }
 

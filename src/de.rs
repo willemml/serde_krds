@@ -1,7 +1,4 @@
-#![allow(dead_code)]
-// starting with yjr files
-
-
+#![allow(dead_code, unused)]
 use std::io::Read;
 
 use crate::error::{Error, Result};

@@ -24,8 +24,7 @@ pub fn to_bytevec<T>(value: &T) -> Result<Vec<u8>>
 where
     T: Serialize,
 {
-    let mut output = Vec::from(crate::MAGIC.clone().as_slice());
-
+    let output = Vec::from(crate::MAGIC.clone().as_slice());
     let mut serializer = Serializer { output };
     value.serialize(&mut serializer)?;
     Ok(serializer.output)

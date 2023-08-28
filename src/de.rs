@@ -131,8 +131,8 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             DataType::Float => visitor.visit_f32(f32::from_be_bytes(self.get_array()?)),
             DataType::Byte => visitor.visit_i8(self.next_byte()? as i8),
             DataType::Char => visitor.visit_char(self.next_byte()? as char),
-            DataType::FieldBegin => unimplemented!(), //self.deserialize_map(visitor),
-            DataType::FieldEnd => Err(Error::UnexpectedObjectEnd),
+            DataType::FieldBegin => todo!(),
+            DataType::FieldEnd => Err(Error::Unexpected(DataType::FieldEnd)),
         }
     }
 
@@ -236,12 +236,9 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        if self.next_datatype()? == DataType::Int {
-            let length = self.parse_i32()? as usize;
-            visitor.visit_map(LengthBased::new(self, length))
-        } else {
-            Err(Error::ExpectedInt)
-        }
+        self.parse_type(DataType::Int)?;
+        let length = self.parse_i32()? as usize;
+        visitor.visit_map(LengthBased::new(self, length))
     }
 
     fn deserialize_struct<V>(
@@ -253,12 +250,9 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        if self.next_datatype()? == DataType::Int {
-            let length = self.parse_i32()? as usize;
-            visitor.visit_map(LengthBasedStruct::new(self, length))
-        } else {
-            Err(Error::ExpectedInt)
-        }
+        self.parse_type(DataType::Int)?;
+        let length = self.parse_i32()? as usize;
+        visitor.visit_map(LengthBasedStruct::new(self, length))
     }
 
     fn deserialize_enum<V>(
@@ -278,13 +272,10 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             todo!()
         } else if next == DataType::FieldBegin {
             let value = visitor.visit_enum(Enum::new(self))?;
-            if self.next_datatype()? == DataType::FieldEnd {
-                Ok(value)
-            } else {
-                Err(Error::ExpectedObjectEnd)
-            }
+            self.parse_type(DataType::FieldEnd)?;
+            Ok(value)
         } else {
-            Err(Error::ExpectedObject)
+            Err(Error::Unexpected(next))
         }
     }
 
@@ -336,12 +327,8 @@ impl<'de, 'a> MapAccess<'de> for LengthBasedStruct<'a, 'de> {
         if self.done == self.total {
             Ok(None)
         } else {
-            if self.de.next_datatype()? == DataType::FieldBegin {
-                seed.deserialize(&mut *self.de).map(Some)
-            } else {
-                dbg!("1");
-                Err(Error::ExpectedObject)
-            }
+            self.de.parse_type(DataType::FieldBegin)?;
+            seed.deserialize(&mut *self.de).map(Some)
         }
     }
 
@@ -351,11 +338,8 @@ impl<'de, 'a> MapAccess<'de> for LengthBasedStruct<'a, 'de> {
     {
         self.done += 1;
         let value = seed.deserialize(&mut *self.de)?;
-        if self.de.next_datatype()? == DataType::FieldEnd {
-            Ok(value)
-        } else {
-            Err(Error::ExpectedObjectEnd)
-        }
+        self.de.parse_type(DataType::FieldEnd)?;
+        Ok(value)
     }
 }
 impl<'de, 'a> MapAccess<'de> for LengthBased<'a, 'de> {
@@ -453,7 +437,7 @@ impl<'de, 'a> VariantAccess<'de> for Enum<'a, 'de> {
     type Error = Error;
 
     fn unit_variant(self) -> Result<()> {
-        Err(Error::ExpectedString)
+        Err(Error::Expected(DataType::String))
     }
 
     fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
@@ -467,19 +451,15 @@ impl<'de, 'a> VariantAccess<'de> for Enum<'a, 'de> {
     where
         V: Visitor<'de>,
     {
-        dbg!("here");
         let value = visitor.visit_seq(LengthBased::new(self.de, len))?;
-        if self.de.next_datatype()? == DataType::FieldEnd {
-            Ok(value)
-        } else {
-            Err(Error::ExpectedObjectEnd)
-        }
+        self.de.parse_type(DataType::FieldEnd)?;
+        Ok(value)
     }
 
     fn struct_variant<V>(self, _fields: &'static [&'static str], _visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        Err(Error::ExpectedStruct)
+        todo!()
     }
 }

@@ -19,6 +19,13 @@ pub enum Error {
     Eof,
     UnknownType(i8),
     ReadError(std::io::Error),
+    BadMagic,
+    ExpectedString,
+    ExpectedObject,
+    ExpectedObjectEnd,
+    UnexpectedObjectEnd,
+    ExpectedInt,
+    ExpectedStruct,
     TrailingBytes,
 }
 
@@ -38,10 +45,9 @@ impl Display for Error {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::Message(msg) => formatter.write_str(msg),
-            Error::Eof => formatter.write_str("unexpected end of input"),
-            Error::TrailingBytes => formatter.write_str("extra data"),
             Error::UnknownType(i) => formatter.write_fmt(format_args!("unknown data type {}", i)),
             Error::ReadError(e) => formatter.write_str(&e.to_string()),
+            _ => formatter.write_fmt(format_args!("{:?}", self)),
         }
     }
 }

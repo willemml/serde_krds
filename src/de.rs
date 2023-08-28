@@ -10,39 +10,32 @@ use crate::error::{Error, Result};
 
 use crate::DataType;
 
+#[derive(Debug)]
 pub struct Deserializer<'de> {
-    // This string starts with the input data and characters are truncated off
-    // the beginning as data is parsed.
     input: &'de [u8],
 }
 
 impl<'de> Deserializer<'de> {
-    // By convention, `Deserializer` constructors are named like `from_xyz`.
-    // That way basic use cases are satisfied by something like
-    // `serde_json::from_str(...)` while advanced use cases that require a
-    // deserializer can make one with `serde_json::Deserializer::from_str(...)`.
     pub fn from_slice(input: &'de [u8]) -> Self {
         Deserializer { input }
     }
 }
 
-// By convention, the public API of a Serde deserializer is one or more
-// `from_xyz` methods such as `from_str`, `from_bytes`, or `from_reader`
-// depending on what Rust types the deserializer is able to consume as input.
-//
-// This basic deserializer supports only `from_str`.
 pub fn from_slice<'a, T>(b: &'a [u8]) -> Result<T>
 where
     T: Deserialize<'a>,
 {
-    if &b[..crate::MAGIC.len()] != crate::MAGIC
-        && &b[crate::MAGIC.len()..crate::MAGIC.len() + 9]
-            == &[DataType::Long as u8, 00, 00, 00, 00, 00, 00, 00, 01]
-    {
+    if b.len() < crate::MAGIC.len() + 5 {
+        return Err(Error::Eof);
+    }
+
+    let magic = &b[..crate::MAGIC.len()];
+
+    if magic != crate::MAGIC {
         return Err(Error::BadMagic);
     }
 
-    let mut deserializer = Deserializer::from_slice(&b[crate::MAGIC.len() + 9..]);
+    let mut deserializer = Deserializer::from_slice(&b[crate::MAGIC.len()..]);
     let t = T::deserialize(&mut deserializer)?;
     if deserializer.input.is_empty() {
         Ok(t)
@@ -53,7 +46,8 @@ where
 
 impl<'de> Deserializer<'de> {
     fn peek_byte(&mut self) -> Result<u8> {
-        Ok(self.input.bytes().next().ok_or(Error::Eof)??)
+        let byte = self.input.bytes().next().ok_or(Error::Eof)??;
+        Ok(byte)
     }
 
     fn next_byte(&mut self) -> Result<u8> {
@@ -62,16 +56,12 @@ impl<'de> Deserializer<'de> {
         Ok(byte)
     }
 
-    fn next_i8(&mut self) -> Result<i8> {
-        Ok(self.next_byte()? as i8)
-    }
-
     fn get_array<const N: usize>(&mut self) -> Result<[u8; N]> {
         if self.input.len() < N {
             return Err(Error::Eof);
         }
         let buf: [u8; N] = *&self.input[0..N].try_into().unwrap();
-        self.input = &self.input[8..];
+        self.input = &self.input[N..];
         Ok(buf)
     }
 
@@ -94,11 +84,20 @@ impl<'de> Deserializer<'de> {
     }
 
     fn parse_i32(&mut self) -> Result<i32> {
-        Ok(i32::from_be_bytes(self.get_array()?))
+        let value = i32::from_be_bytes(self.get_array()?);
+        Ok(value)
     }
 
     fn next_datatype(&mut self) -> Result<DataType> {
         self.next_byte()?.try_into()
+    }
+
+    fn parse_type(&mut self, datatype: DataType) -> Result<()> {
+        if self.next_datatype()? != datatype {
+            Err(Error::Expected(datatype))
+        } else {
+            Ok(())
+        }
     }
 
     fn peek_next_datatype(&mut self) -> Result<DataType> {
@@ -114,14 +113,11 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         option unit unit_struct
     }
 
-    // Look at the input data to decide what Serde data model type to
-    // deserialize as. Not all data formats are able to support this operation.
-    // Formats that support `deserialize_any` are known as self-describing.
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        let datatype: DataType = self.peek_byte()?.try_into()?;
+        let datatype: DataType = self.next_datatype()?;
 
         match datatype {
             DataType::Boolean => {
@@ -129,13 +125,13 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             }
             DataType::Int => visitor.visit_i32(self.parse_i32()?),
             DataType::Long => visitor.visit_i64(i64::from_be_bytes(self.get_array()?)),
-            DataType::UTF => visitor.visit_string(self.parse_string()?.to_string()),
+            DataType::String => visitor.visit_string(self.parse_string()?.to_string()),
             DataType::Double => visitor.visit_f64(f64::from_be_bytes(self.get_array()?)),
             DataType::Short => visitor.visit_i16(i16::from_be_bytes(self.get_array()?)),
             DataType::Float => visitor.visit_f32(f32::from_be_bytes(self.get_array()?)),
             DataType::Byte => visitor.visit_i8(self.next_byte()? as i8),
             DataType::Char => visitor.visit_char(self.next_byte()? as char),
-            DataType::FieldBegin => self.deserialize_map(visitor),
+            DataType::FieldBegin => unimplemented!(), //self.deserialize_map(visitor),
             DataType::FieldEnd => Err(Error::UnexpectedObjectEnd),
         }
     }
@@ -175,8 +171,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         visitor.visit_str(self.parse_string()?)
     }
 
-    // The `Serializer` implementation on the previous page serialized byte
-    // arrays as JSON arrays of bytes. Handle that representation here.
     fn deserialize_bytes<V>(self, _visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
@@ -191,9 +185,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         unimplemented!()
     }
 
-    // As is done here, serializers are encouraged to treat newtype structs as
-    // insignificant wrappers around the data they contain. That means not
-    // parsing anything other than the contained value.
     fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
@@ -201,40 +192,34 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         visitor.visit_newtype_struct(self)
     }
 
-    // Deserialization of compound types like sequences and maps happens by
-    // passing the visitor an "Access" object that gives it the ability to
-    // iterate through the data contained in the sequence.
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        // Parse the opening bracket of the sequence.
-        if self.next_i8()? == -2 && self.parse_string()? == "saved.avl.interval.tree" {
-            let value = visitor.visit_seq(Terminated::new(self))?;
-            if self.peek_next_datatype()? == DataType::FieldEnd {
+        let next = self.peek_next_datatype()?;
+        if next == DataType::FieldBegin {
+            self.next_byte()?;
+            if self.parse_string()? == "saved.avl.interval.tree" {
+                self.parse_type(DataType::Int)?;
+                let length = self.parse_i32()? as usize;
+                let value = visitor.visit_seq(LengthBased::new(self, length))?;
+                self.parse_type(DataType::FieldEnd)?;
                 Ok(value)
             } else {
-                Err(Error::ExpectedObjectEnd)
+                Err(Error::ExpectedIntervalTree)
             }
         } else {
-            Err(Error::ExpectedObject)
+            visitor.visit_seq(Terminated::new(self))
         }
     }
 
-    // Tuples look just like sequences in JSON. Some formats may be able to
-    // represent tuples more efficiently.
-    //
-    // As indicated by the length parameter, the `Deserialize` implementation
-    // for a tuple in the Serde data model is required to know the length of the
-    // tuple before even looking at the input data.
-    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
+    fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        self.deserialize_seq(visitor)
+        visitor.visit_seq(LengthBased::new(self, len))
     }
 
-    // Tuple structs look just like sequences in JSON.
     fn deserialize_tuple_struct<V>(
         self,
         _name: &'static str,
@@ -247,9 +232,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         self.deserialize_seq(visitor)
     }
 
-    // Much like `deserialize_seq` but calls the visitors `visit_map` method
-    // with a `MapAccess` implementation, rather than the visitor's `visit_seq`
-    // method with a `SeqAccess` implementation.
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
@@ -262,12 +244,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         }
     }
 
-    // Structs look just like maps in JSON.
-    //
-    // Notice the `fields` parameter - a "struct" in the Serde data model means
-    // that the `Deserialize` implementation is required to know what the fields
-    // are before even looking at the input data. Any key-value pairing in which
-    // the fields cannot be known ahead of time is probably a map.
     fn deserialize_struct<V>(
         self,
         _name: &'static str,
@@ -277,7 +253,12 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_map(visitor)
+        if self.next_datatype()? == DataType::Int {
+            let length = self.parse_i32()? as usize;
+            visitor.visit_map(LengthBasedStruct::new(self, length))
+        } else {
+            Err(Error::ExpectedInt)
+        }
     }
 
     fn deserialize_enum<V>(
@@ -290,11 +271,11 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         let next = self.peek_next_datatype()?;
-        if next == DataType::UTF {
+        if next == DataType::String {
             self.next_byte()?;
             visitor.visit_enum(self.parse_string()?.into_deserializer())
         } else if next == DataType::Int {
-            self.deserialize_map(visitor)
+            todo!()
         } else if next == DataType::FieldBegin {
             let value = visitor.visit_enum(Enum::new(self))?;
             if self.next_datatype()? == DataType::FieldEnd {
@@ -307,10 +288,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         }
     }
 
-    // An identifier in Serde is the type that identifies a field of a struct or
-    // the variant of an enum. In JSON, struct fields and enum variants are
-    // represented as strings. In other formats they may be represented as
-    // numeric indices.
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
@@ -318,17 +295,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         self.deserialize_str(visitor)
     }
 
-    // Like `deserialize_any` but indicates to the `Deserializer` that it makes
-    // no difference which `Visitor` method is called because the data is
-    // ignored.
-    //
-    // Some deserializers are able to implement this more efficiently than
-    // `deserialize_any`, for example by rapidly skipping over matched
-    // delimiters without paying close attention to the data in between.
-    //
-    // Some formats are not able to implement this at all. Formats that can
-    // implement `deserialize_any` and `deserialize_ignored_any` are known as
-    // self-describing.
     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
@@ -343,12 +309,55 @@ struct LengthBased<'a, 'de: 'a> {
     done: usize,
 }
 
-impl<'a, 'de> LengthBased<'a, 'de> {
+struct LengthBasedStruct<'a, 'de: 'a> {
+    de: &'a mut Deserializer<'de>,
+    total: usize,
+    done: usize,
+}
+
+impl<'a, 'de> LengthBasedStruct<'a, 'de> {
     fn new(de: &'a mut Deserializer<'de>, total: usize) -> Self {
-        LengthBased { de, total, done: 0 }
+        Self { de, total, done: 0 }
     }
 }
 
+impl<'a, 'de> LengthBased<'a, 'de> {
+    fn new(de: &'a mut Deserializer<'de>, total: usize) -> Self {
+        Self { de, total, done: 0 }
+    }
+}
+impl<'de, 'a> MapAccess<'de> for LengthBasedStruct<'a, 'de> {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> std::result::Result<Option<K::Value>, Self::Error>
+    where
+        K: DeserializeSeed<'de>,
+    {
+        if self.done == self.total {
+            Ok(None)
+        } else {
+            if self.de.next_datatype()? == DataType::FieldBegin {
+                seed.deserialize(&mut *self.de).map(Some)
+            } else {
+                dbg!("1");
+                Err(Error::ExpectedObject)
+            }
+        }
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> std::result::Result<V::Value, Self::Error>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        self.done += 1;
+        let value = seed.deserialize(&mut *self.de)?;
+        if self.de.next_datatype()? == DataType::FieldEnd {
+            Ok(value)
+        } else {
+            Err(Error::ExpectedObjectEnd)
+        }
+    }
+}
 impl<'de, 'a> MapAccess<'de> for LengthBased<'a, 'de> {
     type Error = Error;
 
@@ -432,7 +441,11 @@ impl<'de, 'a> EnumAccess<'de> for Enum<'a, 'de> {
     where
         V: DeserializeSeed<'de>,
     {
-        Ok((seed.deserialize(&mut *self.de)?, self))
+        if self.de.next_datatype()? == DataType::FieldBegin {
+            Ok((seed.deserialize(&mut *self.de)?, self))
+        } else {
+            todo!()
+        }
     }
 }
 
@@ -450,11 +463,12 @@ impl<'de, 'a> VariantAccess<'de> for Enum<'a, 'de> {
         seed.deserialize(self.de)
     }
 
-    fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value>
+    fn tuple_variant<V>(self, len: usize, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        let value = visitor.visit_seq(Terminated::new(self.de))?;
+        dbg!("here");
+        let value = visitor.visit_seq(LengthBased::new(self.de, len))?;
         if self.de.next_datatype()? == DataType::FieldEnd {
             Ok(value)
         } else {
@@ -462,7 +476,7 @@ impl<'de, 'a> VariantAccess<'de> for Enum<'a, 'de> {
         }
     }
 
-    fn struct_variant<V>(self, _fields: &'static [&'static str], visitor: V) -> Result<V::Value>
+    fn struct_variant<V>(self, _fields: &'static [&'static str], _visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {

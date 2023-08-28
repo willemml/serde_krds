@@ -9,15 +9,16 @@ pub mod error;
 pub mod file_formats;
 pub mod ser;
 
-pub(crate) const MAGIC: &[u8; 8] = b"\x00\x00\x00\x00\x00\x1A\xB1\x26";
+pub(crate) const MAGIC: &[u8; 17] =
+    b"\x00\x00\x00\x00\x00\x1A\xB1\x26\x02\x00\x00\x00\x00\x00\x00\x00\x01";
 
 #[repr(i8)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(crate) enum DataType {
+pub enum DataType {
     Boolean = 0,
     Int = 1,
     Long = 2,
-    UTF = 3,
+    String = 3,
     Double = 4,
     Short = 5,
     Float = 6,
@@ -34,7 +35,7 @@ impl TryFrom<i8> for DataType {
             0 => Self::Boolean,
             1 => Self::Int,
             2 => Self::Long,
-            3 => Self::UTF,
+            3 => Self::String,
             4 => Self::Double,
             5 => Self::Short,
             6 => Self::Float,
@@ -60,18 +61,12 @@ impl TryFrom<u8> for DataType {
 fn main() -> Result<(), std::io::Error> {
     let mut stdout = std::io::stdout();
 
-    let yjr = file_formats::example_files::yjr_file_1();
+    let serialized = include_bytes!("../../testfiles/krds/pdfannot.yjr");
 
-    //stdout.write_fmt(format_args!("{:#?}", yjr))?;
 
-    let serialized = ser::to_bytevec(&yjr).unwrap();
-    
-    stdout.write_all(&serialized)?;
-    
-    //let deserialized: file_formats::YJRFile = de::from_slice(&serialized).unwrap();
-    
-    //stdout.write_fmt(format_args!("{:#?}", &deserialized))?;
+    let deserialized: file_formats::YJRFile = de::from_slice(serialized).unwrap();
 
+    stdout.write_fmt(format_args!("{:#?}", &deserialized))?;
 
     stdout.flush()?;
     Ok(())

@@ -2,19 +2,12 @@ use std::fmt::{self, Display};
 
 use serde::{de, ser};
 
+use crate::DataType;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
-// This is a bare-bones implementation. A real library would provide additional
-// information in its error type, for example the line and column at which the
-// error occurred, the byte offset into the input, or the current key being
-// processed.
 #[derive(Debug)]
 pub enum Error {
-    // One or more variants that can be created by data structures through the
-    // `ser::Error` and `de::Error` traits. For example the Serialize impl for
-    // Mutex<T> might return an error because the mutex is poisoned, or the
-    // Deserialize impl for a struct may return an error because a required
-    // field is missing.
     Message(String),
     Eof,
     UnknownType(i8),
@@ -27,6 +20,8 @@ pub enum Error {
     UnexpectedObjectEnd,
     ExpectedInt,
     ExpectedStruct,
+    Expected(DataType),
+    ExpectedIntervalTree,
     TrailingBytes,
 }
 

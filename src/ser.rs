@@ -25,8 +25,6 @@ where
     T: Serialize,
 {
     let mut output = Vec::from(crate::MAGIC.clone().as_slice());
-    output.write_all(&[DataType::Long as u8])?;
-    output.write_all(&1i64.to_be_bytes())?;
 
     let mut serializer = Serializer { output };
     value.serialize(&mut serializer)?;
@@ -154,7 +152,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     // get the idea. For example it would emit invalid JSON if the input string
     // contains a '"' character.
     fn serialize_str(self, v: &str) -> Result<()> {
-        self.write_dtype(DataType::UTF)?;
+        self.write_dtype(DataType::String)?;
         if !v.is_empty() {
             //self.output.write_u8(0)?;
         }
@@ -257,7 +255,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 
     fn serialize_tuple_struct(
         self,
-        name: &'static str,
+        _name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleStruct> {
         //self.write_dtype(DataType::FieldBegin)?;

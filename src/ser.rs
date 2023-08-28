@@ -211,10 +211,10 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     where
         T: ?Sized + Serialize,
     {
-        self.write_dtype(DataType::ObjectBegin)?;
+        self.write_dtype(DataType::FieldBegin)?;
         self.write_str(name)?;
         value.serialize(&mut *self)?;
-        self.write_dtype(DataType::ObjectEnd)
+        self.write_dtype(DataType::FieldEnd)
     }
 
     fn serialize_newtype_variant<T>(
@@ -227,10 +227,10 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     where
         T: ?Sized + Serialize,
     {
-        self.write_dtype(DataType::ObjectBegin)?;
+        self.write_dtype(DataType::FieldBegin)?;
         self.write_str(variant)?;
         value.serialize(&mut *self)?;
-        self.write_dtype(DataType::ObjectEnd)?;
+        self.write_dtype(DataType::FieldEnd)?;
         Ok(())
     }
 
@@ -245,7 +245,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     // explicitly in the serialized form. Some serializers may only be able to
     // support sequences for which the length is known up front.
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
-        self.write_dtype(DataType::ObjectBegin)?;
+        self.write_dtype(DataType::FieldBegin)?;
         self.write_str("saved.avl.interval.tree")?;
         self.serialize_i32(len.unwrap() as i32)?;
         Ok(self)
@@ -257,9 +257,11 @@ impl<'a> ser::Serializer for &'a mut Serializer {
 
     fn serialize_tuple_struct(
         self,
-        _name: &'static str,
+        name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleStruct> {
+        //self.write_dtype(DataType::FieldBegin)?;
+        //self.write_str(name)?;
         Ok(self)
     }
 
@@ -270,7 +272,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
-        self.write_dtype(DataType::ObjectBegin)?;
+        self.write_dtype(DataType::FieldBegin)?;
         self.write_str(variant)?;
         Ok(self)
     }
@@ -309,7 +311,7 @@ impl<'a> ser::SerializeSeq for &'a mut Serializer {
     }
 
     fn end(self) -> Result<()> {
-        self.write_dtype(DataType::ObjectEnd)
+        self.write_dtype(DataType::FieldEnd)
     }
 }
 
@@ -325,7 +327,7 @@ impl<'a> ser::SerializeTuple for &'a mut Serializer {
     }
 
     fn end(self) -> Result<()> {
-        self.write_dtype(DataType::ObjectEnd)
+        self.write_dtype(DataType::FieldEnd)
     }
 }
 
@@ -341,6 +343,7 @@ impl<'a> ser::SerializeTupleStruct for &'a mut Serializer {
     }
 
     fn end(self) -> Result<()> {
+        //self.write_dtype(DataType::FieldEnd)
         Ok(())
     }
 }
@@ -357,7 +360,7 @@ impl<'a> ser::SerializeTupleVariant for &'a mut Serializer {
     }
 
     fn end(self) -> Result<()> {
-        self.write_dtype(DataType::ObjectEnd)
+        self.write_dtype(DataType::FieldEnd)
     }
 }
 
@@ -369,20 +372,18 @@ impl<'a> ser::SerializeMap for &'a mut Serializer {
     where
         T: ?Sized + Serialize,
     {
-        self.write_dtype(DataType::ObjectBegin)?;
-        self.write_str(&key.serialize(MapKeySerializer)?)
+        key.serialize(&mut **self)
     }
 
     fn serialize_value<T>(&mut self, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        value.serialize(&mut **self)?;
-        self.write_dtype(DataType::ObjectEnd)
+        value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<()> {
-        self.write_dtype(DataType::ObjectEnd)
+        Ok(())
     }
 }
 
@@ -394,16 +395,10 @@ impl<'a> ser::SerializeStruct for &'a mut Serializer {
     where
         T: ?Sized + Serialize,
     {
-        if key
-            .chars()
-            .try_for_each(|c| if c.is_ascii_digit() { Ok(()) } else { Err(()) })
-            .is_ok()
-        {
-            key.parse::<i32>().unwrap().serialize(&mut **self)?;
-        } else {
-            key.serialize(&mut **self)?;
-        }
-        value.serialize(&mut **self)
+        self.write_dtype(DataType::FieldBegin)?;
+        self.write_str(key)?;
+        value.serialize(&mut **self)?;
+        self.write_dtype(DataType::FieldEnd)
     }
 
     fn end(self) -> Result<()> {
@@ -419,10 +414,10 @@ impl<'a> ser::SerializeStructVariant for &'a mut Serializer {
     where
         T: ?Sized + Serialize,
     {
-        self.write_dtype(DataType::ObjectBegin)?;
+        self.write_dtype(DataType::FieldBegin)?;
         self.write_str(key)?;
         value.serialize(&mut **self)?;
-        self.write_dtype(DataType::ObjectEnd)
+        self.write_dtype(DataType::FieldEnd)
     }
 
     fn end(self) -> Result<()> {

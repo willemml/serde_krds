@@ -20,6 +20,7 @@ pub enum Error {
     UnknownType(i8),
     ReadError(std::io::Error),
     BadMagic,
+    BadValue,
     ExpectedString,
     ExpectedObject,
     ExpectedObjectEnd,

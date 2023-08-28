@@ -23,8 +23,8 @@ pub(crate) enum DataType {
     Float = 6,
     Byte = 7,
     Char = 9,
-    ObjectBegin = -2,
-    ObjectEnd = -1,
+    FieldBegin = -2,
+    FieldEnd = -1,
 }
 
 impl TryFrom<i8> for DataType {
@@ -40,8 +40,8 @@ impl TryFrom<i8> for DataType {
             6 => Self::Float,
             7 => Self::Byte,
             9 => Self::Char,
-            -2 => Self::ObjectBegin,
-            -1 => Self::ObjectEnd,
+            -2 => Self::FieldBegin,
+            -1 => Self::FieldEnd,
             _ => {
                 return Err(Self::Error::UnknownType(value));
             }
@@ -58,14 +58,21 @@ impl TryFrom<u8> for DataType {
 }
 
 fn main() -> Result<(), std::io::Error> {
+    let mut stdout = std::io::stdout();
+
     let yjr = file_formats::example_files::yjr_file_1();
 
+    //stdout.write_fmt(format_args!("{:#?}", yjr))?;
+
     let serialized = ser::to_bytevec(&yjr).unwrap();
-
-    let deserialized: file_formats::KRDSFileTypes = de::from_slice(&serialized).unwrap();
-
-    let mut stdout = std::io::stdout();
+    
     stdout.write_all(&serialized)?;
+    
+    //let deserialized: file_formats::YJRFile = de::from_slice(&serialized).unwrap();
+    
+    //stdout.write_fmt(format_args!("{:#?}", &deserialized))?;
+
+
     stdout.flush()?;
     Ok(())
 }

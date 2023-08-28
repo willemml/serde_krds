@@ -135,8 +135,8 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             DataType::Float => visitor.visit_f32(f32::from_be_bytes(self.get_array()?)),
             DataType::Byte => visitor.visit_i8(self.next_byte()? as i8),
             DataType::Char => visitor.visit_char(self.next_byte()? as char),
-            DataType::ObjectBegin => self.deserialize_map(visitor),
-            DataType::ObjectEnd => Err(Error::UnexpectedObjectEnd),
+            DataType::FieldBegin => self.deserialize_map(visitor),
+            DataType::FieldEnd => Err(Error::UnexpectedObjectEnd),
         }
     }
 
@@ -211,7 +211,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         // Parse the opening bracket of the sequence.
         if self.next_i8()? == -2 && self.parse_string()? == "saved.avl.interval.tree" {
             let value = visitor.visit_seq(Terminated::new(self))?;
-            if self.peek_next_datatype()? == DataType::ObjectEnd {
+            if self.peek_next_datatype()? == DataType::FieldEnd {
                 Ok(value)
             } else {
                 Err(Error::ExpectedObjectEnd)
@@ -295,9 +295,9 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             visitor.visit_enum(self.parse_string()?.into_deserializer())
         } else if next == DataType::Int {
             self.deserialize_map(visitor)
-        } else if next == DataType::ObjectBegin {
+        } else if next == DataType::FieldBegin {
             let value = visitor.visit_enum(Enum::new(self))?;
-            if self.next_datatype()? == DataType::ObjectEnd {
+            if self.next_datatype()? == DataType::FieldEnd {
                 Ok(value)
             } else {
                 Err(Error::ExpectedObjectEnd)
@@ -406,7 +406,7 @@ impl<'de, 'a> SeqAccess<'de> for Terminated<'a, 'de> {
     where
         T: DeserializeSeed<'de>,
     {
-        if self.de.peek_next_datatype()? == DataType::ObjectEnd {
+        if self.de.peek_next_datatype()? == DataType::FieldEnd {
             return Ok(None);
         }
 
@@ -455,7 +455,7 @@ impl<'de, 'a> VariantAccess<'de> for Enum<'a, 'de> {
         V: Visitor<'de>,
     {
         let value = visitor.visit_seq(Terminated::new(self.de))?;
-        if self.de.next_datatype()? == DataType::ObjectEnd {
+        if self.de.next_datatype()? == DataType::FieldEnd {
             Ok(value)
         } else {
             Err(Error::ExpectedObjectEnd)

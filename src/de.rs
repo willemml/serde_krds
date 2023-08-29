@@ -37,6 +37,9 @@ where
     }
 
     let mut deserializer = Deserializer::from_slice(&b[crate::MAGIC.len()..]);
+
+    deserializer.counter = crate::MAGIC.len();
+    
     let t = T::deserialize(&mut deserializer)?;
     if deserializer.input.is_empty() {
         Ok(t)
@@ -497,5 +500,72 @@ impl<'de, 'a> VariantAccess<'de> for Enum<'a, 'de> {
         V: Visitor<'de>,
     {
         todo!()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use linked_hash_map::LinkedHashMap;
+
+    use super::*;
+    use crate::DataType;
+
+    use crate::file_formats::*;
+
+    use crate::test::*;
+
+    macro_rules! de_test {
+        {$($type:ty => $name:ident $getter:ident),+} => {
+            $(#[test]
+            fn $name() {
+                let (bytes, data) = $getter();
+                assert_eq!(de_no_magic::<$type>(&bytes), data)
+            })+
+        };
+    }
+
+    macro_rules! de_num_test {
+        {$($num:expr => $name:ident $dtype:expr),+} => {
+            $(#[test]
+              fn $name() {
+                  let bytes = test_num($num, $dtype);
+                  assert!($num == de_no_magic(&bytes))
+            })+
+        };
+    }
+
+    #[test]
+    fn pdfannot_yjr_de() {
+        assert_eq!(
+            from_slice::<ReaderDataFile>(PDFANNOT_YJR).unwrap(),
+            pdfannot_yjr()
+        );
+    }
+
+    #[test]
+    fn pdfannot_yjf_de() {
+        assert_eq!(
+            from_slice::<TimerDataFile>(PDFANNOT_YJF).unwrap(),
+            pdfannot_yjf()
+        );
+    }
+
+    de_num_test! {
+        117_i8 => de_i8 DataType::Byte,
+        2004_i16 => de_i16 DataType::Short,
+        65555_i32 => de_i32 DataType::Int,
+        4294967300_i64 => de_i64 DataType::Long,
+        3.14_f32 => de_f32 DataType::Float,
+        1293842345.00000000213_f64 => de_f64 DataType::Double
+    }
+
+    de_test! {
+        SimpleStruct => simple_struct_de simple_struct,
+        PHRWrapper => simple_newtype_de simple_newtype,
+        String => string_de test_string,
+        String => empty_string_de empty_string,
+        Vec<i32> => int_vec_de test_vec_int,
+        Vec<String> => string_vec_de test_vec_strings,
+        LinkedHashMap<i32, String> => map_de test_map
     }
 }

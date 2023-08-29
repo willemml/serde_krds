@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use linked_hash_map::LinkedHashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
@@ -28,7 +27,7 @@ pub struct FPR(pub String, pub i64, pub i64, pub String, pub String);
 pub struct LPR(pub i8, pub String, pub i64);
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq, Eq)]
-pub struct WhisperstoreMigrationStatus(bool, bool);
+pub struct WhisperstoreMigrationStatus(pub bool, pub bool);
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct TimerModel(pub i64, pub i64, pub i64, pub f64, pub TACWrapper);
@@ -84,13 +83,13 @@ pub struct ReaderDataFile {
         rename = "annotation.cache.object",
         skip_serializing_if = "Option::is_none"
     )]
-    pub annotation_cache: Option<HashMap<NoteType, IntervalTree<Note>>>,
+    pub annotation_cache: Option<LinkedHashMap<NoteType, IntervalTree<Note>>>,
     #[serde(rename = "apnx.key", skip_serializing_if = "Option::is_none")]
     pub apnx_key: Option<APNXKey>,
     #[serde(rename = "language.store", skip_serializing_if = "Option::is_none")]
     pub language_store: Option<LanguageStore>,
     #[serde(rename = "ReaderMetrics", skip_serializing_if = "Option::is_none")]
-    pub reader_metrics: Option<HashMap<String, String>>,
+    pub reader_metrics: Option<LinkedHashMap<String, String>>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]

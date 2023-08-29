@@ -12,7 +12,7 @@ use crate::DataType;
 
 pub struct Serializer {
     // This string starts empty and JSON is appended as values are serialized.
-    output: Vec<u8>,
+    pub output: Vec<u8>,
 }
 
 // By convention, the public API of a Serde serializer is one or more `to_abc`
@@ -570,5 +570,62 @@ impl serde::Serializer for MapKeySerializer {
         T: ?Sized + std::fmt::Display,
     {
         Ok(value.to_string())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::DataType;
+
+    use crate::test::*;
+
+    macro_rules! ser_test {
+        {$($name:ident $getter:ident),+} => {
+            $(#[test]
+            fn $name() {
+                let (bytes, data) = $getter();
+                assert_eq!(ser_no_magic(&data), bytes)
+            })+
+        };
+    }
+
+    macro_rules! ser_num_test {
+        {$($num:expr => $name:ident $dtype:expr),+} => {
+            $(#[test]
+              fn $name() {
+                  let bytes = test_num($num, $dtype);
+                  assert!(bytes == ser_no_magic($num))
+            })+
+        };
+    }
+
+    #[test]
+    fn pdfannot_yjr_ser() {
+        assert_eq!(&to_bytevec(&pdfannot_yjr()).unwrap(), PDFANNOT_YJR)
+    }
+
+    #[test]
+    fn pdfannot_yjf_ser() {
+        assert_eq!(&to_bytevec(&pdfannot_yjf()).unwrap(), PDFANNOT_YJF)
+    }
+
+    ser_num_test! {
+        117_i8 => ser_i8 DataType::Byte,
+        2004_i16 => ser_i16 DataType::Short,
+        65555_i32 => ser_i32 DataType::Int,
+        4294967300_i64 => ser_i64 DataType::Long,
+        3.14_f32 => ser_f32 DataType::Float,
+        1293842345.00000000213_f64 => ser_f64 DataType::Double
+    }
+
+    ser_test! {
+        simple_struct_ser simple_struct,
+        simple_newtype_ser simple_newtype,
+        string_ser test_string,
+        empty_string_ser empty_string,
+        int_vec_ser test_vec_int,
+        string_vec_ser test_vec_strings,
+        map_ser test_map
     }
 }

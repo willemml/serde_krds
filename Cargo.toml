@@ -8,4 +8,6 @@ edition = "2021"
 [dependencies]
 byteorder = "1.4.3"
 clap = { version = "4.4.0", features = ["derive"] }
+linked-hash-map = { version = "0.5.6", features = ["serde_impl"] }
+num-traits = "0.2.16"
 serde = { version = "1.0.188", features = ["serde_derive"] }

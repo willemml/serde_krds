@@ -242,8 +242,6 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     // explicitly in the serialized form. Some serializers may only be able to
     // support sequences for which the length is known up front.
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
-        self.write_dtype(DataType::FieldBegin)?;
-        self.write_str("saved.avl.interval.tree")?;
         self.serialize_i32(len.unwrap() as i32)?;
         Ok(self)
     }

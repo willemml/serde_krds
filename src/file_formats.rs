@@ -8,6 +8,73 @@ fn note_magic() -> String {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct TimerDataFile {
+    #[serde(rename = "timer.model", skip_serializing_if = "Option::is_none")]
+    timer_model: Option<TimerModel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fpr: Option<FPR>,
+    #[serde(rename = "book.info.store", skip_serializing_if = "Option::is_none")]
+    book_info_store: Option<BookInfoStore>,
+    #[serde(rename = "page.history.store", skip_serializing_if = "Option::is_none")]
+    page_history_store: Option<Vec<PHRWrapper>>,
+    #[serde(
+        rename = "whisperstore.migration.status",
+        skip_serializing_if = "Option::is_none"
+    )]
+    whisperstore_migration_status: Option<WhisperstoreMigrationStatus>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lpr: Option<LPR>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct FPR(pub String, pub i64, pub i64, pub String, pub String);
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct LPR(pub i8, pub String, pub i64);
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct WhisperstoreMigrationStatus(bool, bool);
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct TimerModel(
+    pub i64,
+    pub i64,
+    pub i64,
+    pub f64,
+    pub TACWrapper,
+);
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct BookInfoStore(pub i64, pub f64);
+
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct PHRWrapper(pub PageHistoryRecord);
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct PageHistoryRecord(pub String, pub i64);
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(rename = "timer.average.calculator")]
+pub struct TACWrapper(pub TimerAverageCalculator);
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct TimerAverageCalculator(
+    pub i32,
+    pub i32,
+    pub Vec<TimerAverageDistributionNormal>, // normal
+    pub Vec<TimerAverageOutliers>,           // outliers
+);
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct TimerAverages(pub i64, pub f64, pub f64);
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct TimerAverageDistributionNormal(TimerAverages);
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct TimerAverageOutliers(TimerAverages);
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct ReaderDataFile {
     #[serde(rename = "font.prefs", skip_serializing_if = "Option::is_none")]
     font_preferences: Option<FontPreferences>,

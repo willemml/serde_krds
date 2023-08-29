@@ -48,10 +48,10 @@ where
 impl<'de> Deserializer<'de> {
     /// Does not check for EOF, make sure to check before calling.
     fn consume_unchecked(&mut self, count: usize) {
-            self.input = &self.input[count..];
-            self.counter += count;        
+        self.input = &self.input[count..];
+        self.counter += count;
     }
-    
+
     fn peek_byte(&mut self) -> Result<u8> {
         let byte = self.input.bytes().next().ok_or(Error::Eof)??;
         Ok(byte)
@@ -122,7 +122,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 
     serde::forward_to_deserialize_any! {
         bool i8 i16 i32 i64 f32 f64 char string
-        unit unit_struct
     }
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
@@ -245,10 +244,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-//        self.parse_type(DataType::FieldBegin)?;
-//        dbg!(self.parse_string())?;
         let value = visitor.visit_seq(Terminated::new(self))?;
-//        self.parse_type(DataType::FieldEnd)?;
         Ok(value)
     }
 
@@ -311,6 +307,24 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         self.deserialize_any(visitor)
+    }
+
+    fn deserialize_unit_struct<V>(
+        self,
+        _name: &'static str,
+        _visitor: V,
+    ) -> std::result::Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        todo!()
+    }
+
+    fn deserialize_unit<V>(self, _visitor: V) -> std::result::Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        todo!()
     }
 }
 

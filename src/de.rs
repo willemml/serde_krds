@@ -213,6 +213,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         self.parse_type(DataType::FieldBegin)?;
+        self.parse_string()?;
         let value = visitor.visit_newtype_struct(&mut *self)?;
         self.parse_type(DataType::FieldEnd)?;
         Ok(value)
@@ -225,7 +226,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         self.parse_type(DataType::Int)?;
         let length = self.parse_i32()? as usize;
         let value = visitor.visit_seq(LengthBased::new(self, length))?;
-        self.parse_type(DataType::FieldEnd)?;
         Ok(value)
     }
 

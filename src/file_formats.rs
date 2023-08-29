@@ -59,6 +59,7 @@ pub struct APNXKey(
     pub Vec<i32>,
     pub i32,
     pub i32,
+    pub i32,
     pub String,
 );
 

@@ -2,57 +2,52 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-fn note_magic() -> String {
-    const NOTE_MAGIC: &[u8; 5] = b"\x30\xef\xbf\xbc\x30";
-    std::str::from_utf8(NOTE_MAGIC).unwrap().to_string()
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct TimerDataFile {
     #[serde(rename = "timer.model", skip_serializing_if = "Option::is_none")]
-    timer_model: Option<TimerModel>,
+    pub timer_model: Option<TimerModel>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    fpr: Option<FPR>,
+    pub fpr: Option<FPR>,
     #[serde(rename = "book.info.store", skip_serializing_if = "Option::is_none")]
-    book_info_store: Option<BookInfoStore>,
+    pub book_info_store: Option<BookInfoStore>,
     #[serde(rename = "page.history.store", skip_serializing_if = "Option::is_none")]
-    page_history_store: Option<Vec<PHRWrapper>>,
+    pub page_history_store: Option<Vec<PHRWrapper>>,
     #[serde(
         rename = "whisperstore.migration.status",
         skip_serializing_if = "Option::is_none"
     )]
-    whisperstore_migration_status: Option<WhisperstoreMigrationStatus>,
+    pub whisperstore_migration_status: Option<WhisperstoreMigrationStatus>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    lpr: Option<LPR>,
+    pub lpr: Option<LPR>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct FPR(pub String, pub i64, pub i64, pub String, pub String);
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct LPR(pub i8, pub String, pub i64);
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq, Eq)]
 pub struct WhisperstoreMigrationStatus(bool, bool);
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct TimerModel(pub i64, pub i64, pub i64, pub f64, pub TACWrapper);
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct BookInfoStore(pub i64, pub f64);
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename = "page.history.record")]
 pub struct PHRWrapper(pub PageHistoryRecord);
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct PageHistoryRecord(pub String, pub i64);
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename = "timer.average.calculator")]
 pub struct TACWrapper(pub TimerAverageCalculator);
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct TimerAverageCalculator(
     pub i32,
     pub i32,
@@ -60,45 +55,45 @@ pub struct TimerAverageCalculator(
     pub Vec<TAOWrapper>,  // outliers
 );
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename = "timer.average.calculator.distribution.normal")]
 pub struct TADNWrapper(pub TimerAverageDistributionNormal);
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct TimerAverageDistributionNormal(pub i64, pub f64, pub f64);
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename = "timer.average.calculator.outliers")]
 pub struct TAOWrapper(pub TimerAverageOutliers);
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct TimerAverageOutliers(pub i32, pub f64, pub f64);
 
-#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct ReaderDataFile {
     #[serde(rename = "font.prefs", skip_serializing_if = "Option::is_none")]
-    font_preferences: Option<FontPreferences>,
+    pub font_preferences: Option<FontPreferences>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    sync_lpr: Option<bool>,
+    pub sync_lpr: Option<bool>,
     #[serde(
         rename = "next.in.series.info.data",
         skip_serializing_if = "Option::is_none"
     )]
-    nis_info_data: Option<String>,
+    pub nis_info_data: Option<String>,
     #[serde(
         rename = "annotation.cache.object",
         skip_serializing_if = "Option::is_none"
     )]
-    annotation_cache: Option<HashMap<NoteType, IntervalTree<Note>>>,
+    pub annotation_cache: Option<HashMap<NoteType, IntervalTree<Note>>>,
     #[serde(rename = "apnx.key", skip_serializing_if = "Option::is_none")]
-    apnx_key: Option<APNXKey>,
+    pub apnx_key: Option<APNXKey>,
     #[serde(rename = "language.store", skip_serializing_if = "Option::is_none")]
-    language_store: Option<LanguageStore>,
+    pub language_store: Option<LanguageStore>,
     #[serde(rename = "ReaderMetrics", skip_serializing_if = "Option::is_none")]
-    reader_metrics: Option<HashMap<String, String>>,
+    pub reader_metrics: Option<HashMap<String, String>>,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct FontPreferences(
     pub String, // font
     pub i32,
@@ -118,7 +113,7 @@ pub struct FontPreferences(
     pub i32,
 );
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct APNXKey(
     pub String,
     pub String, // type
@@ -130,7 +125,7 @@ pub struct APNXKey(
     pub String,
 );
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct AnnotationData(
     pub String, // Start pos
     pub String, // End pos
@@ -140,7 +135,7 @@ pub struct AnnotationData(
     pub String, // note nbk ref for handwritten, or note text for typed
 );
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct HighlightData(
     pub String, // Start pos
     pub String, // End pos
@@ -213,11 +208,11 @@ impl<'de> Deserialize<'de> for NoteType {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 #[serde(rename = "saved.avl.interval.tree")]
-pub struct IntervalTree<T>(Vec<T>);
+pub struct IntervalTree<T>(pub Vec<T>);
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub enum Note {
     #[serde(rename = "annotation.personal.bookmark")]
     Bookmark(AnnotationData),
@@ -231,75 +226,10 @@ pub enum Note {
     Sticky(AnnotationData),
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct LanguageStore(pub String, pub i32);
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct ReaderMetrics {
     pub booklaunchedbefore: String,
-}
-
-/// Rust representations of actual files taken from a Kindle Scribe.
-pub mod example_files {
-    use super::*;
-
-    /// Contains location info for scribbles on a write-on PDF.
-    pub fn reader_data_file_1() -> ReaderDataFile {
-        let mut annotations = HashMap::new();
-        let handwritten = vec![
-            Note::Handwritten(AnnotationData(
-                "AdgGAAAAAAAA:2586".to_string(),
-                "AdgGAAAAAAAA:2586".to_string(),
-                1693039707755,
-                1693039707755,
-                note_magic(),
-                "cRgtuIx_zS-m4geT-n6qiDQX".to_string(),
-            )),
-            Note::Handwritten(AnnotationData(
-                "AUYGAAAAAAAA:2".to_string(),
-                "AUYGAAAAAAAA:2".to_string(),
-                1693039682836,
-                1693039682836,
-                note_magic(),
-                "cRgtuIx_zS-m4geT-n6qiDQ0".to_string(),
-            )),
-            Note::Handwritten(AnnotationData(
-                "AeAGAAAAAAAA:10314".to_string(),
-                "AeAGAAAAAAAA:10314".to_string(),
-                1693039698886,
-                1693039698886,
-                note_magic(),
-                "cRgtuIx_zS-m4geT-n6qiDQN".to_string(),
-            )),
-            Note::Handwritten(AnnotationData(
-                "Ad0GAAAAAAAA:3196".to_string(),
-                "Ad0GAAAAAAAA:3196".to_string(),
-                1693106752941,
-                1693106752941,
-                note_magic(),
-                "cQqrFiHphTNa4dSTQKbnzvQ7".to_string(),
-            )),
-            Note::Handwritten(AnnotationData(
-                "AUIEAAAAAAAA:32195".to_string(),
-                "AUIEAAAAAAAA:32195".to_string(),
-                1693167153299,
-                1693167153299,
-                note_magic(),
-                "c0mArJzWjReSnNaskkkQWkw0".to_string(),
-            )),
-        ];
-        annotations.insert(NoteType::Handwritten, IntervalTree(handwritten));
-        let ls = LanguageStore("en-US".to_string(), 4);
-        let mut rm = HashMap::new();
-
-        rm.insert("booklaunchedbefore".to_string(), "true".to_string());
-
-        ReaderDataFile {
-            nis_info_data: Some("".to_string()),
-            annotation_cache: Some(annotations),
-            language_store: Some(ls),
-            reader_metrics: Some(rm),
-            ..Default::default()
-        }
-    }
 }

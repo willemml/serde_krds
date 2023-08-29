@@ -36,20 +36,15 @@ pub struct LPR(pub i8, pub String, pub i64);
 pub struct WhisperstoreMigrationStatus(bool, bool);
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
-pub struct TimerModel(
-    pub i64,
-    pub i64,
-    pub i64,
-    pub f64,
-    pub TACWrapper,
-);
+pub struct TimerModel(pub i64, pub i64, pub i64, pub f64, pub TACWrapper);
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct BookInfoStore(pub i64, pub f64);
 
-
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+#[serde(rename = "page.history.record")]
 pub struct PHRWrapper(pub PageHistoryRecord);
+
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct PageHistoryRecord(pub String, pub i64);
 
@@ -61,18 +56,23 @@ pub struct TACWrapper(pub TimerAverageCalculator);
 pub struct TimerAverageCalculator(
     pub i32,
     pub i32,
-    pub Vec<TimerAverageDistributionNormal>, // normal
-    pub Vec<TimerAverageOutliers>,           // outliers
+    pub Vec<TADNWrapper>, // normal
+    pub Vec<TAOWrapper>,  // outliers
 );
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
-pub struct TimerAverages(pub i64, pub f64, pub f64);
+#[serde(rename = "timer.average.calculator.distribution.normal")]
+pub struct TADNWrapper(pub TimerAverageDistributionNormal);
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
-pub struct TimerAverageDistributionNormal(TimerAverages);
+pub struct TimerAverageDistributionNormal(pub i64, pub f64, pub f64);
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
-pub struct TimerAverageOutliers(TimerAverages);
+#[serde(rename = "timer.average.calculator.outliers")]
+pub struct TAOWrapper(pub TimerAverageOutliers);
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct TimerAverageOutliers(pub i32, pub f64, pub f64);
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct ReaderDataFile {

@@ -328,12 +328,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     }
 }
 
-struct LengthBased<'a, 'de: 'a> {
-    de: &'a mut Deserializer<'de>,
-    total: usize,
-    done: usize,
-}
-
 struct LengthBasedStruct<'a, 'de: 'a> {
     de: &'a mut Deserializer<'de>,
     total: usize,
@@ -346,11 +340,6 @@ impl<'a, 'de> LengthBasedStruct<'a, 'de> {
     }
 }
 
-impl<'a, 'de> LengthBased<'a, 'de> {
-    fn new(de: &'a mut Deserializer<'de>, total: usize) -> Self {
-        Self { de, total, done: 0 }
-    }
-}
 impl<'de, 'a> MapAccess<'de> for LengthBasedStruct<'a, 'de> {
     type Error = Error;
 
@@ -376,6 +365,19 @@ impl<'de, 'a> MapAccess<'de> for LengthBasedStruct<'a, 'de> {
         Ok(value)
     }
 }
+
+struct LengthBased<'a, 'de: 'a> {
+    de: &'a mut Deserializer<'de>,
+    total: usize,
+    done: usize,
+}
+
+impl<'a, 'de> LengthBased<'a, 'de> {
+    fn new(de: &'a mut Deserializer<'de>, total: usize) -> Self {
+        Self { de, total, done: 0 }
+    }
+}
+
 impl<'de, 'a> MapAccess<'de> for LengthBased<'a, 'de> {
     type Error = Error;
 

@@ -33,7 +33,7 @@ where
 impl Serializer {
     fn write_str(&mut self, string: &str) -> Result<()> {
         if string.is_empty() {
-            self.output.write_all(&[0u8; 3])?;
+            self.output.write_all(&[1])?;
         } else {
             self.output.write_u8(0)?;
             self.output
@@ -139,28 +139,17 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         Ok(())
     }
 
-    // Serialize a char as a single-character string. Other formats may
-    // represent this differently.
     fn serialize_char(self, v: char) -> Result<()> {
         self.write_dtype(DataType::Char)?;
         self.output.write_all(&[v as u8])?;
         Ok(())
     }
 
-    // This only works for strings that don't require escape sequences but you
-    // get the idea. For example it would emit invalid JSON if the input string
-    // contains a '"' character.
     fn serialize_str(self, v: &str) -> Result<()> {
         self.write_dtype(DataType::String)?;
-        if !v.is_empty() {
-            //self.output.write_u8(0)?;
-        }
         self.write_str(v)
     }
 
-    // Serialize a byte array as an array of bytes. Could also use a base64
-    // string here. Binary formats will typically represent byte arrays more
-    // compactly.
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
         let mut seq = self.serialize_seq(Some(v.len()))?;
         for byte in v {
@@ -169,16 +158,10 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         seq.end()
     }
 
-    // An absent optional is represented as the JSON `null`.
     fn serialize_none(self) -> Result<()> {
         Ok(())
     }
 
-    // A present optional is represented as just the contained value. Note that
-    // this is a lossy representation. For example the values `Some(())` and
-    // `None` both serialize as just `null`. Unfortunately this is typically
-    // what people expect when working with JSON. Other formats are encouraged
-    // to behave more intelligently if possible.
     fn serialize_some<T>(self, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
@@ -231,16 +214,6 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         Ok(())
     }
 
-    // Now we get to the serialization of compound types.
-    //
-    // The start of the sequence, each value, and the end are three separate
-    // method calls. This one is responsible only for serializing the start,
-    // which in JSON is `[`.
-    //
-    // The length of the sequence may or may not be known ahead of time. This
-    // doesn't make a difference in JSON because the length is not represented
-    // explicitly in the serialized form. Some serializers may only be able to
-    // support sequences for which the length is known up front.
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         self.serialize_i32(len.unwrap() as i32)?;
         Ok(self)
@@ -255,8 +228,6 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         _name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleStruct> {
-        //self.write_dtype(DataType::FieldBegin)?;
-        //self.write_str(name)?;
         Ok(self)
     }
 
@@ -306,7 +277,7 @@ impl<'a> ser::SerializeSeq for &'a mut Serializer {
     }
 
     fn end(self) -> Result<()> {
-        self.write_dtype(DataType::FieldEnd)
+        Ok(())
     }
 }
 

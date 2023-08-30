@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use linked_hash_map::LinkedHashMap;
 use serde::{Deserialize, Serialize};
 
@@ -81,9 +83,9 @@ pub struct ReaderDataFile {
     pub nis_info_data: Option<String>,
     #[serde(
         rename = "annotation.cache.object",
-        skip_serializing_if = "Option::is_none"
+        //skip_serializing_if = "Option::is_none"
     )]
-    pub annotation_cache: Option<LinkedHashMap<NoteType, IntervalTree<Note>>>,
+    pub annotation_cache: HashMap<NoteType, IntervalTree<Note>>,
     #[serde(rename = "apnx.key", skip_serializing_if = "Option::is_none")]
     pub apnx_key: Option<APNXKey>,
     #[serde(rename = "language.store", skip_serializing_if = "Option::is_none")]
@@ -192,6 +194,7 @@ impl<'de> Visitor<'de> for NoteTypeVisitor {
     where
         E: de::Error,
     {
+        dbg!("go");
         value
             .try_into()
             .map_err(|_| E::custom(format!("i32 out of range: -2..9")))

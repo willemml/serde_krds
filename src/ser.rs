@@ -626,6 +626,7 @@ mod test {
         empty_string_ser empty_string,
         int_vec_ser test_vec_int,
         string_vec_ser test_vec_strings,
-        map_ser test_map
+        map_ser test_map,
+        vec_map_struct_ser vec_map_struct
     }
 }

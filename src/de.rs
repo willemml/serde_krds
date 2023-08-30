@@ -39,7 +39,7 @@ where
     let mut deserializer = Deserializer::from_slice(&b[crate::MAGIC.len()..]);
 
     deserializer.counter = crate::MAGIC.len();
-    
+
     let t = T::deserialize(&mut deserializer)?;
     if deserializer.input.is_empty() {
         Ok(t)
@@ -123,37 +123,101 @@ impl<'de> Deserializer<'de> {
 impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     type Error = Error;
 
-    serde::forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 f32 f64 char string
-    }
-
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        let datatype: DataType = self.next_datatype()?;
-
-        match datatype {
-            DataType::Boolean => {
-                visitor.visit_bool(if self.next_byte()? == 0 { false } else { true })
-            }
-            DataType::Int => visitor.visit_i32(self.parse_i32()?),
-            DataType::Long => visitor.visit_i64(i64::from_be_bytes(self.get_array()?)),
-            DataType::String => visitor.visit_string(self.parse_string()?.to_string()),
-            DataType::Double => visitor.visit_f64(f64::from_be_bytes(self.get_array()?)),
-            DataType::Short => visitor.visit_i16(i16::from_be_bytes(self.get_array()?)),
-            DataType::Float => visitor.visit_f32(f32::from_be_bytes(self.get_array()?)),
-            DataType::Byte => visitor.visit_i8(self.next_byte()? as i8),
-            DataType::Char => visitor.visit_char(self.next_byte()? as char),
-            DataType::FieldBegin => todo!(),
-            DataType::FieldEnd => Err(Error::Unexpected(DataType::FieldEnd)),
+        match self.peek_next_datatype()? {
+            DataType::Boolean => self.deserialize_bool(visitor),
+            DataType::Int => self.deserialize_i32(visitor),
+            DataType::Long => self.deserialize_i64(visitor),
+            DataType::String => self.deserialize_string(visitor),
+            DataType::Double => self.deserialize_f64(visitor),
+            DataType::Short => self.deserialize_i16(visitor),
+            DataType::Float => self.deserialize_f32(visitor),
+            DataType::Byte => self.deserialize_i8(visitor),
+            DataType::Char => self.deserialize_char(visitor),
+            _ => Err(Error::WontImplement),
         }
+    }
+
+    fn deserialize_bool<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.parse_type(DataType::Boolean)?;
+        visitor.visit_bool(if self.next_byte()? == 0 { false } else { true })
+    }
+
+    fn deserialize_i8<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.parse_type(DataType::Byte)?;
+        visitor.visit_i8(self.next_byte()? as i8)
+    }
+
+    fn deserialize_i16<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.parse_type(DataType::Short)?;
+        visitor.visit_i16(i16::from_be_bytes(self.get_array()?))
+    }
+
+    fn deserialize_i32<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.parse_type(DataType::Int)?;
+        visitor.visit_i32(self.parse_i32()?)
+    }
+
+    fn deserialize_i64<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.parse_type(DataType::Long)?;
+        visitor.visit_i64(i64::from_be_bytes(self.get_array()?))
+    }
+
+    fn deserialize_f32<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.parse_type(DataType::Float)?;
+        visitor.visit_f32(f32::from_be_bytes(self.get_array()?))
+    }
+
+    fn deserialize_f64<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.parse_type(DataType::Double)?;
+        visitor.visit_f64(f64::from_be_bytes(self.get_array()?))
+    }
+
+    fn deserialize_char<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.parse_type(DataType::Char)?;
+        visitor.visit_char(self.next_byte()? as char)
+    }
+
+    fn deserialize_string<V>(self, visitor: V) -> std::result::Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.parse_type(DataType::String)?;
+        visitor.visit_string(self.parse_string()?.to_string())
     }
 
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
+        self.parse_type(DataType::Byte)?;
         visitor.visit_u8(self.next_byte()?)
     }
 
@@ -161,6 +225,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
+        self.parse_type(DataType::Short)?;
         visitor.visit_u16(u16::from_be_bytes(self.get_array()?))
     }
 
@@ -168,6 +233,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
+        self.parse_type(DataType::Int)?;
         visitor.visit_u32(u32::from_be_bytes(self.get_array()?))
     }
 
@@ -175,6 +241,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
+        self.parse_type(DataType::Long)?;
         visitor.visit_u64(u64::from_be_bytes(self.get_array()?))
     }
 
@@ -182,7 +249,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_str(self.parse_string()?)
+        visitor.visit_str(dbg!(self.parse_string())?)
     }
 
     fn deserialize_bytes<V>(self, _visitor: V) -> Result<V::Value>
@@ -203,6 +270,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
+        dbg!("option");
         if self.peek_next_datatype()? == DataType::FieldEnd {
             visitor.visit_none()
         } else {
@@ -255,6 +323,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
+        dbg!("map");
         self.parse_type(DataType::Int)?;
         let length = self.parse_i32()? as usize;
         visitor.visit_map(LengthBased::new(self, length))
@@ -294,7 +363,11 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             self.parse_type(DataType::FieldEnd)?;
             Ok(value)
         } else {
-            Err(Error::Unexpected(next))
+            Err(Error::Unexpected {
+                want: None,
+                got: next,
+                pos: self.counter,
+            })
         }
     }
 
@@ -350,11 +423,16 @@ impl<'de, 'a> MapAccess<'de> for LengthBasedStruct<'a, 'de> {
     where
         K: DeserializeSeed<'de>,
     {
+        if self.done > 0 {
+            self.de.parse_type(DataType::FieldEnd)?;
+        }
         if self.done == self.total {
             Ok(None)
         } else {
+            self.done += 1;
             self.de.parse_type(DataType::FieldBegin)?;
-            seed.deserialize(&mut *self.de).map(Some)
+            let key = DeserializeSeed::deserialize(seed, &mut *self.de)?;
+            Ok(Some(key))
         }
     }
 
@@ -362,10 +440,11 @@ impl<'de, 'a> MapAccess<'de> for LengthBasedStruct<'a, 'de> {
     where
         V: DeserializeSeed<'de>,
     {
-        self.done += 1;
-        let value = seed.deserialize(&mut *self.de)?;
-        self.de.parse_type(DataType::FieldEnd)?;
-        Ok(value)
+        seed.deserialize(&mut *self.de)
+    }
+
+    fn size_hint(&self) -> Option<usize> {
+        Some(self.total - self.done)
     }
 }
 
@@ -400,7 +479,12 @@ impl<'de, 'a> MapAccess<'de> for LengthBased<'a, 'de> {
         V: DeserializeSeed<'de>,
     {
         self.done += 1;
+        dbg!(self.done);
         seed.deserialize(&mut *self.de)
+    }
+
+    fn size_hint(&self) -> Option<usize> {
+        Some(self.total - self.done)
     }
 }
 
@@ -566,6 +650,7 @@ mod test {
         String => empty_string_de empty_string,
         Vec<i32> => int_vec_de test_vec_int,
         Vec<String> => string_vec_de test_vec_strings,
-        LinkedHashMap<i32, String> => map_de test_map
+        LinkedHashMap<NoteType, String> => map_de test_map,
+        VecMapStruct => vec_map_struct_de vec_map_struct
     }
 }

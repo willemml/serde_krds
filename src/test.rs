@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::de::from_slice;
 use crate::ser::to_bytevec;
 use crate::{file_formats::*, DataType};
@@ -186,6 +188,52 @@ pub fn simple_struct() -> (Vec<u8>, SimpleStruct) {
     (test_bytes, test_orig)
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+pub struct VecMapStruct {
+    field_1: i32,
+    field_2: String,
+    field_3: Vec<i32>,
+    field_4: LinkedHashMap<NoteType, String>,
+}
+
+pub fn vec_map_struct() -> (Vec<u8>, VecMapStruct) {
+    let (map_bytes, map) = test_map();
+    let (vec_bytes, vec) = test_vec_int();
+    let (string_bytes, string) = test_string();
+    let int = 70053;
+    let int_bytes = test_num(int, DataType::Int);
+    let field_starter = [DataType::FieldBegin as u8, 0, 0, 7];
+    let field_end = [DataType::FieldEnd as u8];
+    (
+        [
+            &test_num(4i32, DataType::Int) as &[_],
+            &field_starter,
+            b"field_1",
+            &int_bytes,
+            &field_end,
+            &field_starter,
+            b"field_2",
+            &string_bytes,
+            &field_end,
+            &field_starter,
+            b"field_3",
+            &vec_bytes,
+            &field_end,
+            &field_starter,
+            b"field_4",
+            &map_bytes,
+            &field_end,
+        ]
+        .concat(),
+        VecMapStruct {
+            field_1: int,
+            field_2: string,
+            field_3: vec,
+            field_4: map,
+        },
+    )
+}
+
 fn str_to_bytes(string: &str) -> Vec<u8> {
     [
         &[DataType::String as u8, 0] as &[_],
@@ -195,11 +243,11 @@ fn str_to_bytes(string: &str) -> Vec<u8> {
     .concat()
 }
 
-pub fn test_map() -> (Vec<u8>, LinkedHashMap<i32, String>) {
+pub fn test_map() -> (Vec<u8>, LinkedHashMap<NoteType, String>) {
     let mut map = LinkedHashMap::new();
-    let k1 = 2;
-    let k2 = 10;
-    let k3 = 11;
+    let k1 = NoteType::Bookmark;
+    let k2 = NoteType::Highlight;
+    let k3 = NoteType::Handwritten;
     let string_1 = "testing string";
     let string_2 = "this is neat";
     let string_3 = "TEST YOUR CODE!";
@@ -209,11 +257,11 @@ pub fn test_map() -> (Vec<u8>, LinkedHashMap<i32, String>) {
     (
         [
             &test_num(3i32, DataType::Int) as &[_],
-            &test_num(k1, DataType::Int),
+            &test_num(k1 as i32, DataType::Int),
             &str_to_bytes(string_1),
-            &test_num(k2, DataType::Int),
+            &test_num(k2 as i32, DataType::Int),
             &str_to_bytes(string_2),
-            &test_num(k3, DataType::Int),
+            &test_num(k3 as i32, DataType::Int),
             &str_to_bytes(string_3),
         ]
         .concat(),
@@ -222,7 +270,7 @@ pub fn test_map() -> (Vec<u8>, LinkedHashMap<i32, String>) {
 }
 
 pub fn pdfannot_yjr() -> ReaderDataFile {
-    let mut annotations = LinkedHashMap::new();
+    let mut annotations = HashMap::new();
     let handwritten = handwritten_note_vec();
     annotations.insert(NoteType::Handwritten, IntervalTree(handwritten));
     let ls = LanguageStore("en-US".to_string(), 4);
@@ -232,7 +280,7 @@ pub fn pdfannot_yjr() -> ReaderDataFile {
 
     ReaderDataFile {
         nis_info_data: Some("".to_string()),
-        annotation_cache: Some(annotations),
+        annotation_cache: annotations,//Some(annotations),
         language_store: Some(ls),
         reader_metrics: Some(rm),
         ..Default::default()

@@ -14,8 +14,17 @@ pub enum Error {
     ReadError(std::io::Error),
     BadMagic,
     BadValue,
-    Unexpected(DataType),
-    Expected { want: DataType, got: DataType, pos: usize },
+    WontImplement,
+    Unexpected {
+        want: Option<DataType>,
+        got: DataType,
+        pos: usize,
+    },
+    Expected {
+        want: DataType,
+        got: DataType,
+        pos: usize,
+    },
     ExpectedIntervalTree,
     TrailingBytes,
 }

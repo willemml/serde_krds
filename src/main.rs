@@ -66,7 +66,7 @@ impl TryFrom<u8> for DataType {
 fn main() -> Result<(), std::io::Error> {
     let mut stdout = std::io::stdout();
 
-    let serialized = include_bytes!("../../testfiles/krds/pdfannot.yjr"); //pdfannot.yjr");
+    let serialized = include_bytes!("../test_files/pdfannot.yjr"); //pdfannot.yjr");
 
     let deserialized: file_formats::TimerDataFile = de::from_slice(serialized).unwrap();
 

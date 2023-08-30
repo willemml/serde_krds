@@ -68,7 +68,7 @@ fn main() -> Result<(), std::io::Error> {
 
     let serialized = include_bytes!("../test_files/pdfannot.yjr"); //pdfannot.yjr");
 
-    let deserialized: file_formats::TimerDataFile = de::from_slice(serialized).unwrap();
+    let deserialized: file_formats::ReaderDataFile = de::from_slice(serialized).unwrap();
 
     dbg!(deserialized);
 

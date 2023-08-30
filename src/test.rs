@@ -310,13 +310,13 @@ pub fn pdfannot_yjf() -> TimerDataFile {
     }
 }
 
-// #[test]
-// fn pdfannot_yjr_de_ser() {
-//     assert_eq!(
-//         &to_bytevec(&from_slice::<ReaderDataFile>(PDFANNOT_YJR).unwrap()).unwrap(),
-//         PDFANNOT_YJR
-//     )
-// }
+#[test]
+fn pdfannot_yjr_de_ser() {
+    assert_eq!(
+        &to_bytevec(&from_slice::<ReaderDataFile>(PDFANNOT_YJR).unwrap()).unwrap(),
+        PDFANNOT_YJR
+    )
+}
 
 #[test]
 fn pdfannot_yjr_ser_de() {
@@ -326,26 +326,26 @@ fn pdfannot_yjr_ser_de() {
     )
 }
 
-// #[test]
-// fn pdfannot_yjf_de_ser() {
-//     assert_eq!(
-//         &to_bytevec(&from_slice::<TimerDataFile>(PDFANNOT_YJF).unwrap()).unwrap(),
-//         PDFANNOT_YJF
-//     )
-// }
+#[test]
+fn pdfannot_yjf_de_ser() {
+    assert_eq!(
+        &to_bytevec(&from_slice::<TimerDataFile>(PDFANNOT_YJF).unwrap()).unwrap(),
+        PDFANNOT_YJF
+    )
+}
 
-// #[test]
-// fn bookhlnote_azw3r_de_ser() {
-//     assert_eq!(
-//         &to_bytevec(&from_slice::<ReaderDataFile>(BOOK_HL_NOTE_AZW3R).unwrap()).unwrap(),
-//         BOOK_HL_NOTE_AZW3R
-//     )
-// }
+#[test]
+fn bookhlnote_azw3r_de_ser() {
+    assert_eq!(
+        &to_bytevec(&from_slice::<ReaderDataFile>(BOOK_HL_NOTE_AZW3R).unwrap()).unwrap(),
+        BOOK_HL_NOTE_AZW3R
+    )
+}
 
-// #[test]
-// fn bookhlnote_azw3f_de_ser() {
-//     assert_eq!(
-//         &to_bytevec(&from_slice::<TimerDataFile>(BOOK_HL_NOTE_AZW3F).unwrap()).unwrap(),
-//         BOOK_HL_NOTE_AZW3F
-//     )
-// }
+#[test]
+fn bookhlnote_azw3f_de_ser() {
+    assert_eq!(
+        &to_bytevec(&from_slice::<TimerDataFile>(BOOK_HL_NOTE_AZW3F).unwrap()).unwrap(),
+        BOOK_HL_NOTE_AZW3F
+    )
+}

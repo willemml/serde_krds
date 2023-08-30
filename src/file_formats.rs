@@ -23,6 +23,30 @@ pub struct TimerDataFile {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
+pub struct ReaderDataFile {
+    #[serde(rename = "font.prefs", skip_serializing_if = "Option::is_none")]
+    pub font_preferences: Option<FontPreferences>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sync_lpr: Option<bool>,
+    #[serde(
+        rename = "next.in.series.info.data",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub nis_info_data: Option<String>,
+    #[serde(
+        rename = "annotation.cache.object",
+        //skip_serializing_if = "Option::is_none"
+    )]
+    pub annotation_cache: HashMap<NoteType, IntervalTree<Note>>,
+    #[serde(rename = "apnx.key", skip_serializing_if = "Option::is_none")]
+    pub apnx_key: Option<APNXKey>,
+    #[serde(rename = "language.store", skip_serializing_if = "Option::is_none")]
+    pub language_store: Option<LanguageStore>,
+    #[serde(rename = "ReaderMetrics", skip_serializing_if = "Option::is_none")]
+    pub reader_metrics: Option<LinkedHashMap<String, String>>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct FPR(pub String, pub i64, pub i64, pub String, pub String);
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
@@ -69,30 +93,6 @@ pub struct TAOWrapper(pub TimerAverageOutliers);
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
 pub struct TimerAverageOutliers(pub i32, pub f64, pub f64);
-
-#[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
-pub struct ReaderDataFile {
-    #[serde(rename = "font.prefs", skip_serializing_if = "Option::is_none")]
-    pub font_preferences: Option<FontPreferences>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sync_lpr: Option<bool>,
-    #[serde(
-        rename = "next.in.series.info.data",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub nis_info_data: Option<String>,
-    #[serde(
-        rename = "annotation.cache.object",
-        //skip_serializing_if = "Option::is_none"
-    )]
-    pub annotation_cache: HashMap<NoteType, IntervalTree<Note>>,
-    #[serde(rename = "apnx.key", skip_serializing_if = "Option::is_none")]
-    pub apnx_key: Option<APNXKey>,
-    #[serde(rename = "language.store", skip_serializing_if = "Option::is_none")]
-    pub language_store: Option<LanguageStore>,
-    #[serde(rename = "ReaderMetrics", skip_serializing_if = "Option::is_none")]
-    pub reader_metrics: Option<LinkedHashMap<String, String>>,
-}
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct FontPreferences(

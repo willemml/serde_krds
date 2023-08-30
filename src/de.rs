@@ -249,7 +249,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_str(dbg!(self.parse_string())?)
+        visitor.visit_str((self.parse_string())?)
     }
 
     fn deserialize_bytes<V>(self, _visitor: V) -> Result<V::Value>
@@ -270,7 +270,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        dbg!("option");
         if self.peek_next_datatype()? == DataType::FieldEnd {
             visitor.visit_none()
         } else {
@@ -323,7 +322,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        dbg!("map");
         self.parse_type(DataType::Int)?;
         let length = self.parse_i32()? as usize;
         visitor.visit_map(LengthBased::new(self, length))
@@ -479,7 +477,6 @@ impl<'de, 'a> MapAccess<'de> for LengthBased<'a, 'de> {
         V: DeserializeSeed<'de>,
     {
         self.done += 1;
-        dbg!(self.done);
         seed.deserialize(&mut *self.de)
     }
 

@@ -4,7 +4,7 @@ authors = ["willemml <willem@leit.so>"]
 description = "Serde serializer and deserializer implementations for Amazon's KRDS data format."
 repository = "https://github.com/willemml/serde_krds"
 license = "GPL-3.0"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 [dependencies]

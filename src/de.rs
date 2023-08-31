@@ -17,12 +17,12 @@ pub struct Deserializer<'de> {
 }
 
 impl<'de> Deserializer<'de> {
-    pub fn from_slice(input: &'de [u8]) -> Self {
+    pub fn from_bytes(input: &'de [u8]) -> Self {
         Deserializer { input, counter: 0 }
     }
 }
 
-pub fn from_slice<'a, T>(b: &'a [u8]) -> Result<T>
+pub fn from_bytes<'a, T>(b: &'a [u8]) -> Result<T>
 where
     T: Deserialize<'a>,
 {
@@ -36,7 +36,7 @@ where
         return Err(Error::BadMagic);
     }
 
-    let mut deserializer = Deserializer::from_slice(&b[crate::MAGIC.len()..]);
+    let mut deserializer = Deserializer::from_bytes(&b[crate::MAGIC.len()..]);
 
     deserializer.counter = crate::MAGIC.len();
 
@@ -271,6 +271,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         if self.peek_next_datatype()? == DataType::FieldEnd {
+            dbg!("me");
             visitor.visit_none()
         } else {
             visitor.visit_some(self)
@@ -308,13 +309,13 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     fn deserialize_tuple_struct<V>(
         self,
         _name: &'static str,
-        _len: usize,
+        len: usize,
         visitor: V,
     ) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        let value = visitor.visit_seq(Terminated::new(self))?;
+        let value = visitor.visit_seq(Terminated::new(self, Some(len)))?;
         Ok(value)
     }
 
@@ -504,11 +505,17 @@ impl<'de, 'a> SeqAccess<'de> for LengthBased<'a, 'de> {
 
 struct Terminated<'a, 'de: 'a> {
     de: &'a mut Deserializer<'de>,
+    done: usize,
+    total: Option<usize>,
 }
 
 impl<'a, 'de> Terminated<'a, 'de> {
-    fn new(de: &'a mut Deserializer<'de>) -> Self {
-        Terminated { de }
+    fn new(de: &'a mut Deserializer<'de>, len: Option<usize>) -> Self {
+        Terminated {
+            de,
+            done: 0,
+            total: len,
+        }
     }
 }
 
@@ -520,7 +527,13 @@ impl<'de, 'a> SeqAccess<'de> for Terminated<'a, 'de> {
         T: DeserializeSeed<'de>,
     {
         if self.de.peek_next_datatype()? == DataType::FieldEnd {
-            return Ok(None);
+            if let Some(total) = self.total {
+                if self.done == total {
+                    return Ok(None);
+                }
+            } else {
+                return Ok(None);
+            }
         }
 
         seed.deserialize(&mut *self.de).map(Some)
@@ -591,7 +604,7 @@ mod test {
     use super::*;
     use crate::DataType;
 
-    use crate::file_formats::*;
+    use kindle_formats::krds::*;
 
     use crate::test::*;
 
@@ -618,7 +631,7 @@ mod test {
     #[test]
     fn pdfannot_yjr_de() {
         assert_eq!(
-            from_slice::<ReaderDataFile>(PDFANNOT_YJR).unwrap(),
+            from_bytes::<ReaderDataFile>(PDFANNOT_YJR).unwrap(),
             pdfannot_yjr()
         );
     }
@@ -626,7 +639,7 @@ mod test {
     #[test]
     fn pdfannot_yjf_de() {
         assert_eq!(
-            from_slice::<TimerDataFile>(PDFANNOT_YJF).unwrap(),
+            from_bytes::<TimerDataFile>(PDFANNOT_YJF).unwrap(),
             pdfannot_yjf()
         );
     }

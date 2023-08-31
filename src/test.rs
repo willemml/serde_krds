@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
-use crate::de::from_slice;
-use crate::ser::to_bytevec;
-use crate::{file_formats::*, DataType};
+use crate::de::from_bytes;
+use crate::ser::to_bytes;
+use crate::DataType;
+use kindle_formats::krds::*;
 
 use linked_hash_map::LinkedHashMap;
 use serde::{Deserialize, Serialize};
@@ -21,7 +20,7 @@ pub fn de_no_magic<'a, T>(input: &'a [u8]) -> T
 where
     T: Deserialize<'a>,
 {
-    let mut deserializer = crate::de::Deserializer::from_slice(input);
+    let mut deserializer = crate::de::Deserializer::from_bytes(input);
     T::deserialize(&mut deserializer).unwrap()
 }
 
@@ -41,7 +40,7 @@ pub fn handwritten_note() -> Note {
         1693039707755,
         1693039707755,
         note_magic(),
-        "cRgtuIx_zS-m4geT-n6qiDQX".to_string(),
+        Some("cRgtuIx_zS-m4geT-n6qiDQX".to_string()),
     ))
 }
 
@@ -54,7 +53,7 @@ pub fn handwritten_note_vec() -> Vec<Note> {
             1693039682836,
             1693039682836,
             note_magic(),
-            "cRgtuIx_zS-m4geT-n6qiDQ0".to_string(),
+            Some("cRgtuIx_zS-m4geT-n6qiDQ0".to_string()),
         )),
         Note::Handwritten(AnnotationData(
             "AeAGAAAAAAAA:10314".to_string(),
@@ -62,7 +61,7 @@ pub fn handwritten_note_vec() -> Vec<Note> {
             1693039698886,
             1693039698886,
             note_magic(),
-            "cRgtuIx_zS-m4geT-n6qiDQN".to_string(),
+            Some("cRgtuIx_zS-m4geT-n6qiDQN".to_string()),
         )),
         Note::Handwritten(AnnotationData(
             "Ad0GAAAAAAAA:3196".to_string(),
@@ -70,7 +69,7 @@ pub fn handwritten_note_vec() -> Vec<Note> {
             1693106752941,
             1693106752941,
             note_magic(),
-            "cQqrFiHphTNa4dSTQKbnzvQ7".to_string(),
+            Some("cQqrFiHphTNa4dSTQKbnzvQ7".to_string()),
         )),
         Note::Handwritten(AnnotationData(
             "AUIEAAAAAAAA:32195".to_string(),
@@ -78,7 +77,7 @@ pub fn handwritten_note_vec() -> Vec<Note> {
             1693167153299,
             1693167153299,
             note_magic(),
-            "c0mArJzWjReSnNaskkkQWkw0".to_string(),
+            Some("c0mArJzWjReSnNaskkkQWkw0".to_string()),
         )),
     ]
 }
@@ -270,7 +269,7 @@ pub fn test_map() -> (Vec<u8>, LinkedHashMap<NoteType, String>) {
 }
 
 pub fn pdfannot_yjr() -> ReaderDataFile {
-    let mut annotations = HashMap::new();
+    let mut annotations = LinkedHashMap::new();
     let handwritten = handwritten_note_vec();
     annotations.insert(NoteType::Handwritten, IntervalTree(handwritten));
     let ls = LanguageStore("en-US".to_string(), 4);
@@ -280,7 +279,7 @@ pub fn pdfannot_yjr() -> ReaderDataFile {
 
     ReaderDataFile {
         nis_info_data: Some("".to_string()),
-        annotation_cache: annotations,//Some(annotations),
+        annotation_cache: Some(annotations),
         language_store: Some(ls),
         reader_metrics: Some(rm),
         ..Default::default()
@@ -313,7 +312,7 @@ pub fn pdfannot_yjf() -> TimerDataFile {
 #[test]
 fn pdfannot_yjr_de_ser() {
     assert_eq!(
-        &to_bytevec(&from_slice::<ReaderDataFile>(PDFANNOT_YJR).unwrap()).unwrap(),
+        &to_bytes(&from_bytes::<ReaderDataFile>(PDFANNOT_YJR).unwrap()).unwrap(),
         PDFANNOT_YJR
     )
 }
@@ -321,7 +320,7 @@ fn pdfannot_yjr_de_ser() {
 #[test]
 fn pdfannot_yjr_ser_de() {
     assert_eq!(
-        from_slice::<ReaderDataFile>(&to_bytevec(&pdfannot_yjr()).unwrap()).unwrap(),
+        from_bytes::<ReaderDataFile>(&to_bytes(&pdfannot_yjr()).unwrap()).unwrap(),
         pdfannot_yjr()
     )
 }
@@ -329,7 +328,7 @@ fn pdfannot_yjr_ser_de() {
 #[test]
 fn pdfannot_yjf_de_ser() {
     assert_eq!(
-        &to_bytevec(&from_slice::<TimerDataFile>(PDFANNOT_YJF).unwrap()).unwrap(),
+        &to_bytes(&from_bytes::<TimerDataFile>(PDFANNOT_YJF).unwrap()).unwrap(),
         PDFANNOT_YJF
     )
 }
@@ -337,7 +336,7 @@ fn pdfannot_yjf_de_ser() {
 #[test]
 fn bookhlnote_azw3r_de_ser() {
     assert_eq!(
-        &to_bytevec(&from_slice::<ReaderDataFile>(BOOK_HL_NOTE_AZW3R).unwrap()).unwrap(),
+        &to_bytes(&from_bytes::<ReaderDataFile>(BOOK_HL_NOTE_AZW3R).unwrap()).unwrap(),
         BOOK_HL_NOTE_AZW3R
     )
 }
@@ -345,7 +344,7 @@ fn bookhlnote_azw3r_de_ser() {
 #[test]
 fn bookhlnote_azw3f_de_ser() {
     assert_eq!(
-        &to_bytevec(&from_slice::<TimerDataFile>(BOOK_HL_NOTE_AZW3F).unwrap()).unwrap(),
+        &to_bytes(&from_bytes::<TimerDataFile>(BOOK_HL_NOTE_AZW3F).unwrap()).unwrap(),
         BOOK_HL_NOTE_AZW3F
     )
 }

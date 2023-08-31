@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use byteorder::WriteBytesExt;
 use serde::{
     ser::{self, Impossible, SerializeSeq},
     Serialize,
@@ -11,16 +10,10 @@ use crate::error::{Error, Result};
 use crate::DataType;
 
 pub struct Serializer {
-    // This string starts empty and JSON is appended as values are serialized.
     pub output: Vec<u8>,
 }
 
-// By convention, the public API of a Serde serializer is one or more `to_abc`
-// functions such as `to_string`, `to_bytes`, or `to_writer` depending on what
-// Rust types the serializer is able to produce as output.
-//
-// This basic serializer supports only `to_string`.
-pub fn to_bytevec<T>(value: &T) -> Result<Vec<u8>>
+pub fn to_bytes<T>(value: &T) -> Result<Vec<u8>>
 where
     T: Serialize,
 {
@@ -35,7 +28,7 @@ impl Serializer {
         if string.is_empty() {
             self.output.write_all(&[1])?;
         } else {
-            self.output.write_u8(0)?;
+            self.output.write_all(&[0])?;
             self.output
                 .write_all(&(string.len() as u16).to_be_bytes())?;
             self.output.write_all(string.as_bytes())?;
@@ -44,27 +37,16 @@ impl Serializer {
     }
 
     fn write_dtype(&mut self, dtype: DataType) -> Result<()> {
-        self.output.write_i8(dtype as i8)?;
+        self.output.write_all(&[dtype as u8])?;
         Ok(())
     }
 }
 
 impl<'a> ser::Serializer for &'a mut Serializer {
-    // The output type produced by this `Serializer` during successful
-    // serialization. Most serializers that produce text or binary output should
-    // set `Ok = ()` and serialize into an `io::Write` or buffer contained
-    // within the `Serializer` instance, as happens here. Serializers that build
-    // in-memory data structures may be simplified by using `Ok` to propagate
-    // the data structure around.
     type Ok = ();
 
-    // The error type when some error occurs during serialization.
     type Error = Error;
 
-    // Associated types for keeping track of additional state while serializing
-    // compound data structures like sequences and maps. In this case no
-    // additional state is required beyond what is already stored in the
-    // Serializer struct.
     type SerializeSeq = Self;
     type SerializeTuple = Self;
     type SerializeTupleStruct = Self;
@@ -73,19 +55,12 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     type SerializeStruct = Self;
     type SerializeStructVariant = Self;
 
-    // Here we go with the simple methods. The following 12 methods receive one
-    // of the primitive types of the data model and map it to JSON by appending
-    // into the output string.
     fn serialize_bool(self, v: bool) -> Result<()> {
         self.output
             .write_all(&[DataType::Boolean as u8, if v { 1 } else { 0 }])?;
         Ok(())
     }
 
-    // JSON does not distinguish between different sizes of integers, so all
-    // signed integers will be serialized the same and all unsigned integers
-    // will be serialized the same. Other formats, especially compact binary
-    // formats, may need independent logic for the different sizes.
     fn serialize_i8(self, v: i8) -> Result<()> {
         self.output.write_all(&[DataType::Byte as u8, v as u8])?;
         Ok(())
@@ -103,8 +78,6 @@ impl<'a> ser::Serializer for &'a mut Serializer {
         Ok(())
     }
 
-    // Not particularly efficient but this is example code anyway. A more
-    // performant approach would be to use the `itoa` crate.
     fn serialize_i64(self, v: i64) -> Result<()> {
         self.write_dtype(DataType::Long)?;
         self.output.write_all(&v.to_be_bytes())?;
@@ -170,7 +143,7 @@ impl<'a> ser::Serializer for &'a mut Serializer {
     }
 
     fn serialize_unit(self) -> Result<()> {
-        self.output.write_i8(-1)?;
+        self.output.write_all(&[-1i8 as u8])?;
         Ok(())
     }
 
@@ -309,7 +282,6 @@ impl<'a> ser::SerializeTupleStruct for &'a mut Serializer {
     }
 
     fn end(self) -> Result<()> {
-        //self.write_dtype(DataType::FieldEnd)
         Ok(())
     }
 }
@@ -602,12 +574,12 @@ mod test {
 
     #[test]
     fn pdfannot_yjr_ser() {
-        assert_eq!(&to_bytevec(&pdfannot_yjr()).unwrap(), PDFANNOT_YJR)
+        assert_eq!(&to_bytes(&pdfannot_yjr()).unwrap(), PDFANNOT_YJR)
     }
 
     #[test]
     fn pdfannot_yjf_ser() {
-        assert_eq!(&to_bytevec(&pdfannot_yjf()).unwrap(), PDFANNOT_YJF)
+        assert_eq!(&to_bytes(&pdfannot_yjf()).unwrap(), PDFANNOT_YJF)
     }
 
     ser_num_test! {

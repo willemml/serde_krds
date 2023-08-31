@@ -1,13 +1,19 @@
 [package]
-name = "krds_serde"
+name = "serde_krds"
+authors = ["willemml <willem@leit.so>"]
+description = "Serde serializer and deserializer implementations for Amazon's KRDS data format."
+repository = "https://github.com/willemml/serde_krds"
+license = "GPL-3.0"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-byteorder = "1.4.3"
-clap = { version = "4.4.0", features = ["derive"] }
+serde = { version = "1.0.188", features = ["serde_derive"] }
+
+[dev-dependencies]
+kindle_formats = { version = "0.1.1", features = ["linked_hash_maps"] }
 linked-hash-map = { version = "0.5.6", features = ["serde_impl"] }
 num-traits = "0.2.16"
-serde = { version = "1.0.188", features = ["serde_derive"] }
+
+[patch.crates-io]
+kindle_formats = { path = "../kindle_formats" }
